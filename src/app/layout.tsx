@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { ThemeProvider } from "@/components/theme-provider";
+import { Suspense } from "react";
+import { AppTheme } from "@/components/app-theme";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -35,10 +36,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          {children}
-          <Toaster position="top-center" />
-        </ThemeProvider>
+        <Suspense fallback={null}>
+          <AppTheme>
+            {children}
+            <Toaster position="top-center" />
+          </AppTheme>
+        </Suspense>
       </body>
     </html>
   );

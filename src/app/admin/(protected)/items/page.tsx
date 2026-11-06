@@ -9,7 +9,7 @@ import { LoansManager, type AdminLoanItem } from "./loans-manager";
 // Prüft die Admin-Session bei jedem Aufruf, darf daher blockieren.
 export const instant = false;
 
-export const metadata: Metadata = { title: "Verleih" };
+export const metadata: Metadata = { title: "Items" };
 
 export default async function LoansPage() {
   await requireAdminPage();
@@ -33,9 +33,10 @@ export default async function LoansPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Verleih</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Items</h1>
         <p className="hidden text-sm text-muted-foreground sm:block">
-          Wird direkt in Homebox im Feld „Verleih“ am Item gespeichert. Abgelaufene Einträge zählen automatisch nicht mehr.
+          Alles aus deinen Homebox-Lagerorten. Verleihe trägst du hier ein, sie landen in Homebox im Feld „Verleih“ und
+          zählen nach dem Rückgabedatum automatisch nicht mehr.
         </p>
       </div>
       {error ? (

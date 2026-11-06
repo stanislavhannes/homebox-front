@@ -1,5 +1,5 @@
 import "server-only";
-import type { AdminLoanItem } from "@/app/admin/(protected)/loans/loans-manager";
+import type { AdminLoanItem } from "@/app/admin/(protected)/items/loans-manager";
 import type { CatalogItem } from "@/lib/catalog";
 import { availabilityLabel, computeAvailability, formatLoan, isActive, parseLoans } from "@/lib/loans";
 import { imageUrl } from "@/lib/public-view";

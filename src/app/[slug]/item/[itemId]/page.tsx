@@ -10,7 +10,7 @@ import { AccentScope } from "@/components/shop/accent-scope";
 import { BackLink } from "@/components/shop/back-link";
 import { PageLogo } from "@/components/shop/page-logo";
 import { buttonVariants } from "@/components/ui/button";
-import { LoanRow } from "@/app/admin/(protected)/loans/loans-manager";
+import { LoanRow } from "@/app/admin/(protected)/items/loans-manager";
 import { knownBorrowers, toAdminLoanItem } from "@/lib/admin-loans";
 import { isAdmin } from "@/lib/auth";
 import { allContactActions, contactTitle } from "@/lib/contact";

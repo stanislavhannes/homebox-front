@@ -218,12 +218,17 @@ export function deletePage(id: number) {
 
 // ---- globale Einstellungen ----
 
+export type ThemeSetting = "system" | "light" | "dark";
+export const THEME_SETTINGS: ThemeSetting[] = ["system", "light", "dark"];
+
 export type AppSettings = {
   /** Items mit diesem Tag erscheinen auf keiner Page (Groß/Klein egal) */
   hiddenTag: string;
+  /** Hell/Dunkel für die ganze App: nach Gerät oder fest */
+  theme: ThemeSetting;
 };
 
-const DEFAULT_SETTINGS: AppSettings = { hiddenTag: "privat" };
+const DEFAULT_SETTINGS: AppSettings = { hiddenTag: "privat", theme: "system" };
 
 export function getSettings(): AppSettings {
   const rows = db().prepare("SELECT key, value FROM settings").all() as {
@@ -233,14 +238,15 @@ export function getSettings(): AppSettings {
   const s: AppSettings = { ...DEFAULT_SETTINGS };
   for (const r of rows) {
     if (r.key === "hiddenTag") s.hiddenTag = r.value;
+    if (r.key === "theme" && (THEME_SETTINGS as string[]).includes(r.value)) s.theme = r.value as ThemeSetting;
   }
   return s;
 }
 
 export function saveSettings(s: AppSettings) {
-  db()
-    .prepare(
-      "INSERT INTO settings (key, value) VALUES ('hiddenTag', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-    )
-    .run(s.hiddenTag.trim());
+  const upsert = db().prepare(
+    "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+  );
+  upsert.run("hiddenTag", s.hiddenTag.trim());
+  upsert.run("theme", s.theme);
 }

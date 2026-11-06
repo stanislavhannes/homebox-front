@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function SettingsForm({ hiddenTag }: { hiddenTag: string }) {
+export function SettingsForm({ hiddenTag, theme }: { hiddenTag: string; theme: "system" | "light" | "dark" }) {
   const [state, action, pending] = useActionState<FormState, FormData>(saveSettingsAction, {});
   return (
     <form action={action} className="space-y-4 rounded-xl border p-4">
@@ -18,6 +18,28 @@ export function SettingsForm({ hiddenTag }: { hiddenTag: string }) {
           um nichts zu verstecken.
         </p>
       </div>
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium">Darstellung</legend>
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              ["system", "Automatisch", "wie das Gerät"],
+              ["light", "Immer hell", ""],
+              ["dark", "Immer dunkel", ""],
+            ] as const
+          ).map(([value, label, hint]) => (
+            <label
+              key={value}
+              className="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm has-[:checked]:border-primary has-[:checked]:bg-[var(--admin-active-bg)]"
+            >
+              <input type="radio" name="theme" value={value} defaultChecked={theme === value} className="size-4 accent-primary" />
+              {label}
+              {hint && <span className="text-muted-foreground">({hint})</span>}
+            </label>
+          ))}
+        </div>
+        <p className="text-sm text-muted-foreground">Gilt für alle Pages und die Verwaltung.</p>
+      </fieldset>
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending}>
           Speichern

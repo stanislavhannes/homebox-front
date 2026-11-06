@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 const LINKS = [
   { href: "/admin", label: "Pages", match: (p: string) => p === "/admin" || p.startsWith("/admin/pages") },
-  { href: "/admin/loans", label: "Verleih", match: (p: string) => p.startsWith("/admin/loans") },
+  { href: "/admin/items", label: "Items", match: (p: string) => p.startsWith("/admin/items") },
   { href: "/admin/settings", label: "Einstellungen", match: (p: string) => p.startsWith("/admin/settings") },
 ];
 

@@ -30,6 +30,7 @@ import {
   LOGO_MAX_BYTES,
   LOGO_TYPES,
   PAGE_LAYOUTS,
+  THEME_SETTINGS,
   saveSettings,
   setPageLogo,
   updatePage,
@@ -168,7 +169,8 @@ export async function deletePageAction(formData: FormData) {
 
 export async function saveSettingsAction(_prev: FormState, formData: FormData): Promise<FormState> {
   await requireAdmin();
-  saveSettings({ hiddenTag: String(formData.get("hiddenTag") ?? "") });
+  const theme = THEME_SETTINGS.find((t) => t === formData.get("theme")) ?? "system";
+  saveSettings({ hiddenTag: String(formData.get("hiddenTag") ?? ""), theme });
   updateTag(HOMEBOX_TAG);
   return { ok: "Gespeichert." };
 }

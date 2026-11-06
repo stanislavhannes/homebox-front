@@ -16,7 +16,7 @@ export default async function SettingsPage() {
   return (
     <div className="max-w-2xl space-y-8">
       <h1 className="text-2xl font-bold tracking-tight">Einstellungen</h1>
-      <SettingsForm hiddenTag={settings.hiddenTag} />
+      <SettingsForm hiddenTag={settings.hiddenTag} theme={settings.theme} />
       <section className="space-y-2 rounded-xl border p-4 text-sm">
         <h2 className="font-semibold">Verbindung</h2>
         <p className="text-muted-foreground">
