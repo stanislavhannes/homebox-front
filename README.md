@@ -126,11 +126,37 @@ Daten aus Homebox werden bis zu 60 Sekunden zwischengespeichert. Ein Verleih aus
 der App aktualisiert sofort; für Änderungen direkt in Homebox gibt es im Admin
 einen Button zum Neuladen.
 
-## Schnellstart
+## Mit Docker
+
+Fertige Images für amd64 und arm64 liegen in der GitHub Container Registry:
+`ghcr.io/stanislavhannes/homebox-front` (`latest` = Stand von `main`, dazu Versions-Tags).
+
+```bash
+mkdir homebox-front && cd homebox-front
+curl -O https://raw.githubusercontent.com/stanislavhannes/homebox-front/main/docker-compose.yml
+curl -o .env https://raw.githubusercontent.com/stanislavhannes/homebox-front/main/.env.example
+# .env ausfüllen (siehe unten), DATABASE_PATH setzt die Compose-Datei selbst
+docker compose up -d
+```
+
+Die App läuft dann auf http://localhost:3000. Pages, Passwörter, Logos und
+Einstellungen liegen im Volume `homebox-front-data` (`/data` im Container); das
+gehört ins Backup. Zum Ausprobieren ohne Homebox:
+
+```bash
+docker run --rm -p 3000:3000 -e HOMEBOX_MOCK=1 -e ADMIN_PASSWORD=test \
+  -e SESSION_SECRET="$(openssl rand -base64 48)" ghcr.io/stanislavhannes/homebox-front
+```
+
+Selbst bauen geht mit `docker build -t homebox-front .` oder `build: .` in der
+Compose-Datei. Hinter einem Reverse Proxy (Traefik, Caddy, nginx) genügt es, auf
+Port 3000 weiterzuleiten; HTTPS sollte der Proxy übernehmen.
+
+## Schnellstart ohne Docker
 
 ### Voraussetzungen
 
-- Node.js 22.5 oder neuer (nutzt das eingebaute `node:sqlite`)
+- Node.js 22.13 oder neuer (nutzt das eingebaute `node:sqlite`)
 - Eine Homebox-Instanz (ab v0.26, getestet mit 0.27) und ein API-Key daraus
 
 ### 1. Installieren
@@ -207,6 +233,16 @@ src/app/api/               Proxy für Fotos/Anhänge, Page-Logos
 src/components/shop/       Shop-Ansichten, Kacheln, Galerie, Kontakt
 src/lib/homebox/           Homebox-API-Client, Beispieldaten, sicheres Schreiben
 src/lib/loans.ts           Verleih-Format und Verfügbarkeit
+```
+
+## GitHub Action
+
+`.github/workflows/docker.yml` prüft jeden Push und Pull Request (Typen, Lint,
+Tests, Docker-Build) und veröffentlicht bei Pushes auf `main` und bei Tags wie
+`v1.0.0` ein Multi-Arch-Image nach `ghcr.io`. Ein Release entsteht also mit:
+
+```bash
+git tag v1.0.0 && git push origin v1.0.0
 ```
 
 ## Lizenz

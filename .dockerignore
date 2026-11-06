@@ -1,0 +1,16 @@
+.git
+.github
+.next
+node_modules
+data
+.env*
+!.env.example
+.superpowers
+.impeccable
+docs
+*.md
+!README.md
+coverage
+npm-debug.log*
+Dockerfile
+docker-compose.yml

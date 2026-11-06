@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Für das Docker-Image: .next/standalone enthält Server und nur die nötigen node_modules
+  output: "standalone",
   cacheComponents: true,
   partialPrefetching: true,
   // Alte Adresse der Item-Verwaltung
