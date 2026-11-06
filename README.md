@@ -214,7 +214,7 @@ Die Startseite `/` listet bewusst nichts auf; Pages findet man nur über ihren L
 
 ```bash
 npm test               # Unit-Tests (vitest): Verleih-Format, Verfügbarkeit, PUT-Body, Kontakte …
-npx tsc --noEmit       # Typprüfung
+npm run typecheck      # Typprüfung (erzeugt vorher die Routentypen)
 npx eslint src         # Lint
 ```
 

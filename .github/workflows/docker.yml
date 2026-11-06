@@ -25,7 +25,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npx tsc --noEmit
+      - run: npm run typecheck
       - run: npx eslint src
       - run: npm test
 
