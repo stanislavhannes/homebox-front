@@ -1,0 +1,44 @@
+name: Release
+
+# Legt zu jedem v*-Tag ein GitHub-Release an. Notizen kommen aus
+# .github/releases/<tag>.md, sonst erzeugt GitHub sie aus den Commits.
+# Kommt eine Notizdatei erst nach dem Tag auf main, wird das Release dann nachgeholt.
+on:
+  push:
+    tags: ["v*"]
+    branches: [main]
+    paths: [".github/releases/**"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fehlende Releases anlegen
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "$REF_TYPE" = tag ]; then
+            tags="$REF_NAME"
+          else
+            tags=$(git tag -l 'v*')
+          fi
+          for tag in $tags; do
+            if gh release view "$tag" >/dev/null 2>&1; then
+              echo "$tag: Release gibt es schon"
+              continue
+            fi
+            notes=".github/releases/$tag.md"
+            if [ -f "$notes" ]; then
+              gh release create "$tag" --title "$tag" --notes-file "$notes" --verify-tag
+            elif [ "$REF_TYPE" = tag ]; then
+              gh release create "$tag" --title "$tag" --generate-notes --verify-tag
+            fi
+          done
