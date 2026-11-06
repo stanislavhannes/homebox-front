@@ -7,7 +7,7 @@ import { env } from "@/lib/env";
 const g = globalThis as unknown as { __appDb?: DatabaseSync; __appDbSchema?: number };
 
 /** Bei neuen Spalten erhöhen, dann migriert auch ein laufender Dev-Server (HMR) sofort. */
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 export function db(): DatabaseSync {
   if (g.__appDb) {
@@ -55,5 +55,6 @@ function migrate(database: DatabaseSync) {
   if (!cols.has("logo")) database.exec("ALTER TABLE pages ADD COLUMN logo BLOB");
   if (!cols.has("logo_type")) database.exec("ALTER TABLE pages ADD COLUMN logo_type TEXT");
   if (!cols.has("accent")) database.exec("ALTER TABLE pages ADD COLUMN accent TEXT");
+  if (!cols.has("contact_title")) database.exec("ALTER TABLE pages ADD COLUMN contact_title TEXT NOT NULL DEFAULT ''");
   if (!cols.has("howto")) database.exec("ALTER TABLE pages ADD COLUMN howto TEXT NOT NULL DEFAULT ''");
 }

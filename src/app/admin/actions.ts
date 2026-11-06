@@ -16,6 +16,7 @@ import {
 import { HOMEBOX_TAG } from "@/lib/catalog";
 import { sniffContentType } from "@/lib/sniff";
 import { normalizeAccent } from "@/lib/theme";
+import { CONTACT_TITLE_MAX } from "@/lib/contact";
 import { shrinkLogo } from "@/lib/logo-image";
 import { updateLoans } from "@/lib/loan-service";
 import { formatLoan, isActive, todayInBerlin, computeAvailability } from "@/lib/loans";
@@ -102,6 +103,7 @@ export async function savePageAction(_prev: FormState, formData: FormData): Prom
     published: formData.get("published") === "on",
     accent: normalizeAccent(formData.get("accent")),
     howto: String(formData.get("howto") ?? "").trim(),
+    contactTitle: String(formData.get("contactTitle") ?? "").trim().slice(0, CONTACT_TITLE_MAX),
   };
 
   if (!title) return { error: "Bitte einen Titel angeben.", field: "allgemein" };

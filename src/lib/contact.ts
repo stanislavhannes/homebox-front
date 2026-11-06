@@ -1,5 +1,21 @@
 import { tokenize } from "./linkify";
 
+/** Überschrift über dem Kontakt, pro Page einstellbar. Leer = Standard. */
+export const DEFAULT_CONTACT_TITLE = "Ausleihen? Frag einfach";
+export const CONTACT_TITLE_SUGGESTIONS = [
+  DEFAULT_CONTACT_TITLE,
+  "Brauchst du was davon? Melde dich",
+  "Interesse? Sag Bescheid",
+  "Leihen statt kaufen: frag uns",
+  "Du brauchst was? Schreib mir",
+  "Was dabei? Schreib uns",
+] as const;
+export const CONTACT_TITLE_MAX = 60;
+
+export function contactTitle(value: string | null | undefined) {
+  return value?.trim() || DEFAULT_CONTACT_TITLE;
+}
+
 export type ContactAction = { href: string; label: string; external: boolean };
 
 /**

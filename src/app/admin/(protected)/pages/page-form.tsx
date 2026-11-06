@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { LocationNode } from "@/lib/catalog";
 import type { PageConfig, VisibleField } from "@/lib/pages";
 import { ACCENT_PRESETS, accentForeground, avoidStatusHues } from "@/lib/theme";
+import { CONTACT_TITLE_MAX, CONTACT_TITLE_SUGGESTIONS, DEFAULT_CONTACT_TITLE } from "@/lib/contact";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -117,6 +118,7 @@ export function PageForm({ page, locations, fieldOptions, defaultFields, homebox
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [removeLogo, setRemoveLogo] = useState(false);
   const [accent, setAccent] = useState(page?.accent ?? "");
+  const [contactHeading, setContactHeading] = useState(page?.contactTitle ?? "");
   const isPreset = ACCENT_PRESETS.some((p) => p.value === accent);
   const shifted = accent ? avoidStatusHues(accent) : null;
   const shown = shifted?.color || "#18181b";
@@ -353,6 +355,37 @@ export function PageForm({ page, locations, fieldOptions, defaultFields, homebox
           title="Kontakt & Ablauf"
           hint="Links, Mailadressen, Telefonnummern und Telegram-Namen (@name) werden klickbar. Der erste Kontaktweg wird auf jeder Detailseite zum Button „Anfragen“."
         >
+          <div className="space-y-2">
+            <Label htmlFor="contactTitle">Überschrift</Label>
+            <Input
+              id="contactTitle"
+              name="contactTitle"
+              value={contactHeading}
+              onChange={(e) => setContactHeading(e.target.value)}
+              maxLength={CONTACT_TITLE_MAX}
+              placeholder={DEFAULT_CONTACT_TITLE}
+            />
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Vorschläge für die Überschrift">
+              {CONTACT_TITLE_SUGGESTIONS.map((t) => {
+                const active = (contactHeading.trim() || DEFAULT_CONTACT_TITLE) === t;
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setContactHeading(t === DEFAULT_CONTACT_TITLE ? "" : t)}
+                    aria-pressed={active}
+                    className={cn(
+                      "min-h-8 rounded-full border px-3 text-xs transition-colors",
+                      active ? "border-foreground bg-muted font-medium" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                    )}
+                  >
+                    {t}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-sm text-muted-foreground">Steht über dem Kontakt und als Hinweis oben auf der Page. Leer = „{DEFAULT_CONTACT_TITLE}“.</p>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="contact">Kontakt</Label>
             <Textarea

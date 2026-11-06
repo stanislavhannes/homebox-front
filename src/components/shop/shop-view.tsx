@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { LinkifiedText } from "@/components/linkified-text";
 import type { PublicItem, PublicPage } from "@/lib/public-view";
+import { DEFAULT_CONTACT_TITLE } from "@/lib/contact";
 import { cn } from "@/lib/utils";
 import { ItemCard, ItemRow } from "./item-card";
 import { PageLogo } from "./page-logo";
@@ -305,11 +306,14 @@ function Grid({
 export function ContactCard({
   contact,
   howto,
+  title = DEFAULT_CONTACT_TITLE,
   className,
   anchor = true,
 }: {
   contact: string;
   howto?: string;
+  /** Überschrift, pro Page einstellbar */
+  title?: string;
   className?: string;
   /** false für die zweite Kopie (Desktop-Seitenleiste), damit #kontakt eindeutig bleibt */
   anchor?: boolean;
@@ -320,7 +324,7 @@ export function ContactCard({
       {contact.trim() && (
         <div>
           <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold">
-            <MessageCircleIcon className="size-4" /> Ausleihen? Frag einfach
+            <MessageCircleIcon className="size-4" /> {title}
           </h2>
           <LinkifiedText text={contact} className="text-sm text-muted-foreground" />
         </div>
@@ -347,7 +351,7 @@ function ContactHint({ page, className }: { page: PublicPage; className?: string
       )}
     >
       <MessageCircleIcon className="size-4" />
-      {page.howto.trim() ? "Wie ausleihen? So läuft's & Kontakt" : "Ausleihen? Frag einfach"}
+      {page.howto.trim() ? "Wie ausleihen? So läuft's & Kontakt" : page.contactTitle}
       <ArrowDownIcon className="size-3.5" />
     </a>
   );
@@ -418,7 +422,7 @@ export function ShopView({ page, locations, items }: Props) {
           </div>
           <CountRow f={f} total={items.length} hasLent={hasLent} />
           <Grid list items={f.visible} total={f.filtered.length} slug={page.slug} onReset={reset} onShowMore={f.showMore} />
-          <ContactCard contact={page.contact} howto={page.howto} className="mt-8" />
+          <ContactCard contact={page.contact} howto={page.howto} title={page.contactTitle} className="mt-8" />
         </main>
       </div>
     );
@@ -449,7 +453,7 @@ export function ShopView({ page, locations, items }: Props) {
                 className="mt-3 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-white underline-offset-4 hover:underline"
               >
                 <MessageCircleIcon className="size-4" />
-                {page.howto.trim() ? "Wie ausleihen? So läuft's & Kontakt" : "Ausleihen? Frag einfach"}
+                {page.howto.trim() ? "Wie ausleihen? So läuft's & Kontakt" : page.contactTitle}
                 <ArrowDownIcon className="size-3.5" />
               </a>
             )}
@@ -468,7 +472,7 @@ export function ShopView({ page, locations, items }: Props) {
           </div>
           <CountRow f={f} total={items.length} hasLent={hasLent} />
           <Grid items={f.visible} total={f.filtered.length} slug={page.slug} onReset={reset} onShowMore={f.showMore} />
-          <ContactCard contact={page.contact} howto={page.howto} className="mt-8" />
+          <ContactCard contact={page.contact} howto={page.howto} title={page.contactTitle} className="mt-8" />
         </main>
       </div>
     );
@@ -534,7 +538,7 @@ export function ShopView({ page, locations, items }: Props) {
                 <AvailableToggle checked={f.onlyAvailable} onChange={f.setOnlyAvailable} />
               </div>
             )}
-            <ContactCard contact={page.contact} howto={page.howto} anchor={false} />
+            <ContactCard contact={page.contact} howto={page.howto} title={page.contactTitle} anchor={false} />
           </div>
         </aside>
         <main className="min-w-0 flex-1 space-y-4">
@@ -547,7 +551,7 @@ export function ShopView({ page, locations, items }: Props) {
           <CountRow f={f} total={items.length} hasLent={hasLent} toggleClassName="md:hidden" />
           <Grid items={f.visible} total={f.filtered.length} slug={page.slug} onReset={reset} onShowMore={f.showMore} />
           <div className="md:hidden">
-            <ContactCard contact={page.contact} howto={page.howto} className="mt-8" />
+            <ContactCard contact={page.contact} howto={page.howto} title={page.contactTitle} className="mt-8" />
           </div>
         </main>
       </div>

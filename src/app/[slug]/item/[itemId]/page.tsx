@@ -12,7 +12,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { LoanRow } from "@/app/admin/(protected)/loans/loans-manager";
 import { knownBorrowers, toAdminLoanItem } from "@/lib/admin-loans";
 import { isAdmin } from "@/lib/auth";
-import { contactAction } from "@/lib/contact";
+import { contactAction, contactTitle } from "@/lib/contact";
 import { getSettings } from "@/lib/pages";
 import { tokenize } from "@/lib/linkify";
 import { PasswordForm } from "@/components/shop/password-form";
@@ -222,7 +222,7 @@ async function ItemContentInner({
             </section>
           )}
 
-          <ContactCard contact={page.contact} howto={page.howto} />
+          <ContactCard contact={page.contact} howto={page.howto} title={contactTitle(page.contactTitle)} />
         </div>
       </div>
 

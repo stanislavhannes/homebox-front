@@ -52,6 +52,8 @@ export type PageConfig = {
   accent: string | null;
   /** „So läuft's“: Abholung, Dauer, Pfand … (Freitext) */
   howto: string;
+  /** Überschrift über dem Kontakt, leer = Standard */
+  contactTitle: string;
 };
 
 type Row = {
@@ -69,10 +71,11 @@ type Row = {
   has_logo: number;
   accent: string | null;
   howto: string;
+  contact_title: string;
 };
 
 const COLS =
-  "id, slug, title, intro, layout, location_ids, password_hash, contact, visible_fields, published, updated_at, accent, howto, (logo IS NOT NULL) AS has_logo";
+  "id, slug, title, intro, layout, location_ids, password_hash, contact, visible_fields, published, updated_at, accent, howto, contact_title, (logo IS NOT NULL) AS has_logo";
 
 function fromRow(r: Row): PageConfig {
   return {
@@ -90,6 +93,7 @@ function fromRow(r: Row): PageConfig {
     hasLogo: r.has_logo === 1,
     accent: r.accent,
     howto: r.howto ?? "",
+    contactTitle: r.contact_title ?? "",
   };
 }
 
@@ -119,13 +123,14 @@ export type PageInput = {
   published: boolean;
   accent: string | null;
   howto: string;
+  contactTitle: string;
 };
 
 export function createPage(input: PageInput, passwordHash: string | null): number {
   const res = db()
     .prepare(
-      `INSERT INTO pages (slug, title, intro, layout, location_ids, password_hash, contact, visible_fields, published, accent, howto)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO pages (slug, title, intro, layout, location_ids, password_hash, contact, visible_fields, published, accent, howto, contact_title)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       input.slug,
@@ -139,6 +144,7 @@ export function createPage(input: PageInput, passwordHash: string | null): numbe
       input.published ? 1 : 0,
       input.accent,
       input.howto,
+      input.contactTitle,
     );
   return Number(res.lastInsertRowid);
 }
@@ -148,7 +154,7 @@ export function updatePage(id: number, input: PageInput, passwordHash?: string |
   db()
     .prepare(
       `UPDATE pages SET slug = ?, title = ?, intro = ?, layout = ?, location_ids = ?, contact = ?,
-         visible_fields = ?, published = ?, accent = ?, howto = ?, updated_at = datetime('now') WHERE id = ?`,
+         visible_fields = ?, published = ?, accent = ?, howto = ?, contact_title = ?, updated_at = datetime('now') WHERE id = ?`,
     )
     .run(
       input.slug,
@@ -161,6 +167,7 @@ export function updatePage(id: number, input: PageInput, passwordHash?: string |
       input.published ? 1 : 0,
       input.accent,
       input.howto,
+      input.contactTitle,
       id,
     );
   if (passwordHash !== undefined) {
