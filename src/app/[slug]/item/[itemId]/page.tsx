@@ -71,7 +71,8 @@ async function ItemContentInner({
   const adminItem = admin ? toAdminLoanItem(raw, today, getSettings().hiddenTag) : null;
   const borrowers = admin ? knownBorrowers(catalog.items) : [];
   const howtoLead = firstSentence(page.howto);
-  const moreLink = page.howto.trim() ? "So läuft's & Kontakt" : null;
+  // „Mehr dazu“ nur, wenn „So läuft's“ mehr enthält als den ersten Satz (Kontakt haben die Buttons)
+  const howtoHasMore = !!howtoLead && page.howto.trim().replace(/\s+/g, " ").length > howtoLead.replace(/…$/, "").length + 1;
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
@@ -114,9 +115,24 @@ async function ItemContentInner({
             )}
           </div>
 
-          {(ask || howtoLead || moreLink) && (
+          {(ask || howtoLead) && (
             <div className="space-y-2">
-              {howtoLead && <p className="max-w-prose text-sm text-muted-foreground">{howtoLead}</p>}
+              {howtoLead && (
+                <p className="max-w-prose text-sm text-muted-foreground">
+                  {howtoLead}
+                  {howtoHasMore && (
+                    <>
+                      {" "}
+                      <a
+                        href={`#kontakt-${item.id}`}
+                        className="inline-flex items-center gap-0.5 font-medium whitespace-nowrap text-foreground underline-offset-4 hover:underline"
+                      >
+                        Mehr dazu <ArrowDownIcon className="size-3.5" />
+                      </a>
+                    </>
+                  )}
+                </p>
+              )}
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                 {ask && (
                   // Am Handy übernimmt die feste Leiste unten
@@ -136,14 +152,6 @@ async function ItemContentInner({
                       </a>
                     ))}
                   </div>
-                )}
-                {moreLink && (
-                  <a
-                    href={`#kontakt-${item.id}`}
-                    className="inline-flex min-h-11 items-center gap-1 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                  >
-                    {moreLink} <ArrowDownIcon className="size-3.5" />
-                  </a>
                 )}
               </div>
             </div>
