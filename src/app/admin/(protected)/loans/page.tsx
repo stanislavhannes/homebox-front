@@ -1,16 +1,9 @@
 import type { Metadata } from "next";
 import { requireAdminPage } from "@/lib/admin-guard";
 import { getCatalog, getLocationTree } from "@/lib/catalog";
-import {
-  availabilityLabel,
-  computeAvailability,
-  formatLoan,
-  isActive,
-  parseLoans,
-  todayInBerlin,
-} from "@/lib/loans";
+import { toAdminLoanItem } from "@/lib/admin-loans";
+import { todayInBerlin } from "@/lib/loans";
 import { getSettings } from "@/lib/pages";
-import { imageUrl } from "@/lib/public-view";
 import { LoansManager, type AdminLoanItem } from "./loans-manager";
 
 // Prüft die Admin-Session bei jedem Aufruf, darf daher blockieren.
@@ -20,7 +13,7 @@ export const metadata: Metadata = { title: "Verleih" };
 
 export default async function LoansPage() {
   await requireAdminPage();
-  const hiddenTag = getSettings().hiddenTag.trim().toLowerCase();
+  const hiddenTag = getSettings().hiddenTag;
 
   let items: AdminLoanItem[] = [];
   let error: string | null = null;
@@ -32,30 +25,7 @@ export default async function LoansPage() {
       "",
     );
     const today = todayInBerlin();
-    items = catalog.items.map((it) => {
-      const parsed = parseLoans(it.loanText);
-      const a = computeAvailability(it.quantity, parsed.loans, today);
-      return {
-        id: it.id,
-        name: it.name,
-        assetId: it.assetId,
-        thumbUrl: it.thumbId ? imageUrl("_admin", it.id, it.thumbId) : null,
-        locationPath: [...it.locationPath, ...(it.containerName ? [it.containerName] : [])].join(" › "),
-        quantity: it.quantity,
-        available: a.available,
-        status: a.status,
-        label: availabilityLabel(a, today, true),
-        loans: parsed.loans.map((l) => ({
-          key: formatLoan(l),
-          quantity: l.quantity,
-          until: l.until,
-          borrower: l.borrower ?? null,
-          active: isActive(l, today),
-        })),
-        invalid: parsed.invalid,
-        hidden: !!hiddenTag && it.tags.some((t) => t.toLowerCase() === hiddenTag),
-      };
-    });
+    items = catalog.items.map((it) => toAdminLoanItem(it, today, hiddenTag));
   } catch (err) {
     error = (err as Error).message;
   }

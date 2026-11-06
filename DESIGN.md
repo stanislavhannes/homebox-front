@@ -262,6 +262,9 @@ Fehler stehen am betroffenen Abschnitt (rot, `role="alert"`), die Seite springt 
 ### Verleih-Liste (Admin)
 Verliehene Items zuerst, je Zeile ein ruhiger Outline-Button „Verleihen“ (Primär nur „Eintragen“ im offenen Formular), „Ist zurück“ für Rückgaben, „Alles verliehen“ statt deaktiviertem Button. Datum mit Schnellwahl (Bis Sonntag, 1 Woche, 2 Wochen), bekannte Namen als Vorschläge. 50 Zeilen, dann „Weitere anzeigen“. Am Handy alle Bedienelemente mindestens 40px hoch.
 
+### Verleih auf der Detailseite (nur Admin)
+Ist der Admin eingeloggt, zeigt die öffentliche Detailseite unter Status und Lagerort einen Kasten „Verleih · Nur für dich sichtbar“ im Admin-Orange (`.admin-theme`, Rahmen 45 % Markisen-Orange). Darin dieselbe Verleih-Zeile wie im Admin, ohne Bild und Kopf. Besucher bekommen weder den Kasten noch Empfänger-Namen ins HTML.
+
 ### Admin-Navigation
 Der aktive Tab hat eine 12 % Orange-Tönung mit Markisen-Schrift. Inaktive Tabs sind bleistiftgrau, beim Hover kommt eine Regalgrau-Fläche. Beim Tastaturfokus zeigen alle Tabs einen 3px-Ring in Orange.
 

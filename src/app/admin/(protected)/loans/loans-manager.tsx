@@ -141,7 +141,21 @@ function nextSunday(today: string) {
   return addDays(today, day === 0 ? 7 : 7 - day);
 }
 
-function LoanRow({ item, today, borrowers }: { item: AdminLoanItem; today: string; borrowers: string[] }) {
+/**
+ * Eine Verleih-Zeile. embedded = auf der öffentlichen Detailseite (nur für Admins): ohne Bild,
+ * Name und Status, die stehen dort schon.
+ */
+export function LoanRow({
+  item,
+  today,
+  borrowers,
+  embedded = false,
+}: {
+  item: AdminLoanItem;
+  today: string;
+  borrowers: string[];
+  embedded?: boolean;
+}) {
   const router = useRouter();
   const listId = useId();
   const [open, setOpen] = useState(false);
@@ -168,6 +182,7 @@ function LoanRow({ item, today, borrowers }: { item: AdminLoanItem; today: strin
         router.refresh();
       }
     });
+  const Wrapper = embedded ? "div" : "li";
   const presets = [
     { label: "Bis Sonntag", value: nextSunday(today) },
     { label: "1 Woche", value: addDays(today, 7) },
@@ -177,9 +192,9 @@ function LoanRow({ item, today, borrowers }: { item: AdminLoanItem; today: strin
   const hasExpired = item.loans.some((l) => !l.active);
 
   return (
-    <li className={cn("flex flex-col gap-3 p-3 sm:flex-row sm:flex-wrap sm:items-start", busy && "opacity-60")}>
+    <Wrapper className={cn("flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start", !embedded && "p-3", busy && "opacity-60")}>
       <div className="flex min-w-0 flex-1 gap-3">
-        <div className="size-14 shrink-0 overflow-hidden rounded-lg bg-muted">
+        <div className={cn("size-14 shrink-0 overflow-hidden rounded-lg bg-muted", embedded && "hidden")}>
           {item.thumbUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={item.thumbUrl} alt="" loading="lazy" className="size-full object-cover" />
@@ -190,7 +205,10 @@ function LoanRow({ item, today, borrowers }: { item: AdminLoanItem; today: strin
           )}
         </div>
         <div className="min-w-0 flex-1 space-y-1.5">
-          <div className="flex flex-wrap items-center gap-2">
+          {embedded && item.loans.length === 0 && item.invalid.length === 0 && (
+            <p className="text-sm text-muted-foreground">Gerade nichts verliehen.</p>
+          )}
+          <div className={cn("flex flex-wrap items-center gap-2", embedded && "hidden")}>
             <span className="font-medium">{item.name}</span>
             {item.hidden && (
               <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="Hat den versteckten Tag, erscheint auf keiner Page">
@@ -198,11 +216,11 @@ function LoanRow({ item, today, borrowers }: { item: AdminLoanItem; today: strin
               </span>
             )}
           </div>
-          <p className="truncate text-xs text-muted-foreground">
+          <p className={cn("truncate text-xs text-muted-foreground", embedded && "hidden")}>
             {item.assetId && <span className="font-mono">{item.assetId} · </span>}
             {item.locationPath} · {item.quantity} Stück
           </p>
-          <AvailabilityBadge status={item.status} label={item.label} />
+          {!embedded && <AvailabilityBadge status={item.status} label={item.label} />}
 
           {(item.loans.length > 0 || item.invalid.length > 0) && (
             <ul className="space-y-1 pt-1">
@@ -331,6 +349,6 @@ function LoanRow({ item, today, borrowers }: { item: AdminLoanItem; today: strin
           )}
         </form>
       )}
-    </li>
+    </Wrapper>
   );
 }

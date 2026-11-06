@@ -9,7 +9,11 @@ import { AccentScope } from "@/components/shop/accent-scope";
 import { BackLink } from "@/components/shop/back-link";
 import { PageLogo } from "@/components/shop/page-logo";
 import { buttonVariants } from "@/components/ui/button";
+import { LoanRow } from "@/app/admin/(protected)/loans/loans-manager";
+import { knownBorrowers, toAdminLoanItem } from "@/lib/admin-loans";
+import { isAdmin } from "@/lib/auth";
 import { contactAction } from "@/lib/contact";
+import { getSettings } from "@/lib/pages";
 import { tokenize } from "@/lib/linkify";
 import { PasswordForm } from "@/components/shop/password-form";
 import { ContactCard } from "@/components/shop/shop-view";
@@ -60,6 +64,10 @@ async function ItemContentInner({
   const today = todayInBerlin();
   const item = toPublicDetail(page, raw, today);
   const ask = contactAction(page.contact, item.name);
+  // Nur für eingeloggte Admins: Verleih direkt hier eintragen (Empfänger gelangen nur dann ins HTML)
+  const admin = await isAdmin();
+  const adminItem = admin ? toAdminLoanItem(raw, today, getSettings().hiddenTag) : null;
+  const borrowers = admin ? knownBorrowers(catalog.items) : [];
   const contactWays = tokenize(page.contact).filter((t) => t.type !== "text").length;
   const howtoLead = firstSentence(page.howto);
   const moreLink = page.howto.trim() ? "So läuft's & Kontakt" : contactWays > 1 ? "Alle Kontaktwege" : null;
@@ -131,6 +139,21 @@ async function ItemContentInner({
                 )}
               </div>
             </div>
+          )}
+
+          {adminItem && (
+            <section
+              aria-labelledby="verleih-admin"
+              className="admin-theme space-y-3 rounded-xl border border-[color-mix(in_oklab,var(--awning)_45%,var(--border))] p-4"
+            >
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 id="verleih-admin" className="text-sm font-semibold">
+                  Verleih
+                </h2>
+                <span className="text-xs text-muted-foreground">Nur für dich sichtbar</span>
+              </div>
+              <LoanRow item={adminItem} today={today} borrowers={borrowers} embedded />
+            </section>
           )}
 
           {item.description && <Markdown text={item.description} className="leading-relaxed" />}
