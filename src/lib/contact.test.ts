@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contactAction } from "./contact";
+import { allContactActions, contactAction, contactActions, normalizeMail, normalizePhone, normalizeTelegram } from "./contact";
 
 describe("contactAction", () => {
   it("Mail mit Betreff und Text", () => {
@@ -31,5 +31,29 @@ describe("contactAction", () => {
     expect(a.href).toBe("https://t.me/stani_hannes");
     expect(a.external).toBe(true);
     expect(a.kind).toBe("telegram");
+  });
+  it("alle Kontaktwege in Reihenfolge, ohne Doppelte und ohne Webseiten", () => {
+    const all = contactActions("Mail info@x.de, Telegram @stani_hannes, Web https://x.de, nochmal info@x.de", "Bank");
+    expect(all.map((a) => a.kind)).toEqual(["mail", "telegram"]);
+  });
+  it("Telegram-Eingaben werden zum Namen", () => {
+    expect(normalizeTelegram("@stani_hannes")).toBe("stani_hannes");
+    expect(normalizeTelegram("t.me/stani_hannes")).toBe("stani_hannes");
+    expect(normalizeTelegram("https://t.me/stani_hannes")).toBe("stani_hannes");
+    expect(normalizeTelegram("stani_hannes")).toBe("stani_hannes");
+    expect(normalizeTelegram("@abc")).toBeNull();
+    expect(normalizeTelegram("hallo welt")).toBeNull();
+  });
+  it("Mail und Telefon prüfen", () => {
+    expect(normalizeMail(" info@x.de ")).toBe("info@x.de");
+    expect(normalizeMail("info@x")).toBeNull();
+    expect(normalizePhone("+49 171 2345678")).toBe("+49 171 2345678");
+    expect(normalizePhone("0171/2345678")).toBe("0171/2345678");
+    expect(normalizePhone("123")).toBeNull();
+    expect(normalizePhone("ruf an")).toBeNull();
+  });
+  it("Felder vor weiteren Hinweisen, ohne Doppelte", () => {
+    const a = allContactActions({ telegram: "stani_hannes", mail: "info@x.de", phone: "" }, "Oder info@x.de oder https://wa.me/49171", "Bank");
+    expect(a.map((x) => x.kind)).toEqual(["telegram", "mail", "whatsapp"]);
   });
 });

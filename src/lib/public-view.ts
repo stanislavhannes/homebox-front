@@ -9,7 +9,7 @@ import {
   todayInBerlin,
   type Availability,
 } from "@/lib/loans";
-import { contactTitle } from "@/lib/contact";
+import { contactTitle, type ContactFields } from "@/lib/contact";
 import { cleanFileTitle } from "@/lib/file-title";
 import { getPageBySlug, getSettings, type PageConfig, type VisibleField } from "@/lib/pages";
 
@@ -54,6 +54,7 @@ export type PublicPage = {
   accent: string | null;
   howto: string;
   contactTitle: string;
+  contactFields: ContactFields;
 };
 
 export function imageUrl(slug: string, itemId: string, attId: string) {
@@ -79,6 +80,7 @@ export function toPublicPage(page: PageConfig): PublicPage {
     accent: page.accent,
     howto: page.howto,
     contactTitle: contactTitle(page.contactTitle),
+    contactFields: page.contactFields,
   };
 }
 

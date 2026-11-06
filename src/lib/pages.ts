@@ -1,4 +1,5 @@
 import "server-only";
+import type { ContactFields } from "@/lib/contact";
 import { db } from "@/lib/db";
 
 export const FIELD_OPTIONS = [
@@ -54,6 +55,8 @@ export type PageConfig = {
   howto: string;
   /** Überschrift über dem Kontakt, leer = Standard */
   contactTitle: string;
+  /** Eigene Kontaktfelder (normalisiert); contact = weitere Hinweise */
+  contactFields: ContactFields;
 };
 
 type Row = {
@@ -72,10 +75,13 @@ type Row = {
   accent: string | null;
   howto: string;
   contact_title: string;
+  contact_mail: string;
+  contact_telegram: string;
+  contact_phone: string;
 };
 
 const COLS =
-  "id, slug, title, intro, layout, location_ids, password_hash, contact, visible_fields, published, updated_at, accent, howto, contact_title, (logo IS NOT NULL) AS has_logo";
+  "id, slug, title, intro, layout, location_ids, password_hash, contact, visible_fields, published, updated_at, accent, howto, contact_title, contact_mail, contact_telegram, contact_phone, (logo IS NOT NULL) AS has_logo";
 
 function fromRow(r: Row): PageConfig {
   return {
@@ -94,6 +100,7 @@ function fromRow(r: Row): PageConfig {
     accent: r.accent,
     howto: r.howto ?? "",
     contactTitle: r.contact_title ?? "",
+    contactFields: { telegram: r.contact_telegram ?? "", mail: r.contact_mail ?? "", phone: r.contact_phone ?? "" },
   };
 }
 
@@ -124,13 +131,14 @@ export type PageInput = {
   accent: string | null;
   howto: string;
   contactTitle: string;
+  contactFields: ContactFields;
 };
 
 export function createPage(input: PageInput, passwordHash: string | null): number {
   const res = db()
     .prepare(
-      `INSERT INTO pages (slug, title, intro, layout, location_ids, password_hash, contact, visible_fields, published, accent, howto, contact_title)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO pages (slug, title, intro, layout, location_ids, password_hash, contact, visible_fields, published, accent, howto, contact_title, contact_mail, contact_telegram, contact_phone)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       input.slug,
@@ -145,6 +153,9 @@ export function createPage(input: PageInput, passwordHash: string | null): numbe
       input.accent,
       input.howto,
       input.contactTitle,
+      input.contactFields.mail,
+      input.contactFields.telegram,
+      input.contactFields.phone,
     );
   return Number(res.lastInsertRowid);
 }
@@ -154,7 +165,7 @@ export function updatePage(id: number, input: PageInput, passwordHash?: string |
   db()
     .prepare(
       `UPDATE pages SET slug = ?, title = ?, intro = ?, layout = ?, location_ids = ?, contact = ?,
-         visible_fields = ?, published = ?, accent = ?, howto = ?, contact_title = ?, updated_at = datetime('now') WHERE id = ?`,
+         visible_fields = ?, published = ?, accent = ?, howto = ?, contact_title = ?, contact_mail = ?, contact_telegram = ?, contact_phone = ?, updated_at = datetime('now') WHERE id = ?`,
     )
     .run(
       input.slug,
@@ -168,6 +179,9 @@ export function updatePage(id: number, input: PageInput, passwordHash?: string |
       input.accent,
       input.howto,
       input.contactTitle,
+      input.contactFields.mail,
+      input.contactFields.telegram,
+      input.contactFields.phone,
       id,
     );
   if (passwordHash !== undefined) {

@@ -16,7 +16,7 @@ import {
 import { HOMEBOX_TAG } from "@/lib/catalog";
 import { sniffContentType } from "@/lib/sniff";
 import { normalizeAccent } from "@/lib/theme";
-import { CONTACT_TITLE_MAX } from "@/lib/contact";
+import { CONTACT_TITLE_MAX, normalizeMail, normalizePhone, normalizeTelegram } from "@/lib/contact";
 import { shrinkLogo } from "@/lib/logo-image";
 import { updateLoans } from "@/lib/loan-service";
 import { formatLoan, isActive, todayInBerlin, computeAvailability } from "@/lib/loans";
@@ -44,7 +44,7 @@ async function requireAdmin() {
 // ---------- Login ----------
 
 /** field = Abschnitt im Formular, zu dem der Fehler gehört (Scroll + Markierung) */
-export type FormState = { error?: string; ok?: string; field?: "allgemein" | "lagerorte" | "logo" | "passwort" };
+export type FormState = { error?: string; ok?: string; field?: "allgemein" | "lagerorte" | "logo" | "passwort" | "kontakt" };
 
 export async function loginAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
@@ -104,6 +104,7 @@ export async function savePageAction(_prev: FormState, formData: FormData): Prom
     accent: normalizeAccent(formData.get("accent")),
     howto: String(formData.get("howto") ?? "").trim(),
     contactTitle: String(formData.get("contactTitle") ?? "").trim().slice(0, CONTACT_TITLE_MAX),
+    contactFields: { telegram: "", mail: "", phone: "" },
   };
 
   if (!title) return { error: "Bitte einen Titel angeben.", field: "allgemein" };
@@ -112,6 +113,17 @@ export async function savePageAction(_prev: FormState, formData: FormData): Prom
   const existing = getPageBySlug(slug);
   if (existing && existing.id !== id) return { error: `Der Link „/${slug}“ ist schon vergeben.`, field: "allgemein" };
   if (input.locationIds.length === 0) return { error: "Bitte mindestens einen Lagerort auswählen.", field: "lagerorte" };
+
+  const rawTg = String(formData.get("contactTelegram") ?? "").trim();
+  const rawMail = String(formData.get("contactMail") ?? "").trim();
+  const rawPhone = String(formData.get("contactPhone") ?? "").trim();
+  const tg = rawTg ? normalizeTelegram(rawTg) : "";
+  const mail = rawMail ? normalizeMail(rawMail) : "";
+  const phone = rawPhone ? normalizePhone(rawPhone) : "";
+  if (tg === null) return { error: "Telegram-Name: 5–32 Zeichen, Buchstabe zuerst, z. B. @stani_hannes.", field: "kontakt" };
+  if (mail === null) return { error: "Die Mailadresse sieht nicht richtig aus.", field: "kontakt" };
+  if (phone === null) return { error: "Die Telefonnummer sieht nicht richtig aus (6–15 Ziffern).", field: "kontakt" };
+  input.contactFields = { telegram: tg, mail, phone };
 
   const newPassword = String(formData.get("password") ?? "");
   const removePassword = formData.get("removePassword") === "on";

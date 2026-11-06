@@ -13,9 +13,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { LoanRow } from "@/app/admin/(protected)/loans/loans-manager";
 import { knownBorrowers, toAdminLoanItem } from "@/lib/admin-loans";
 import { isAdmin } from "@/lib/auth";
-import { contactAction, contactTitle } from "@/lib/contact";
+import { allContactActions, contactTitle } from "@/lib/contact";
 import { getSettings } from "@/lib/pages";
-import { tokenize } from "@/lib/linkify";
 import { PasswordForm } from "@/components/shop/password-form";
 import { ContactCard } from "@/components/shop/shop-view";
 import { HomeboxUnavailable } from "@/components/shop/states";
@@ -64,14 +63,15 @@ async function ItemContentInner({
 
   const today = todayInBerlin();
   const item = toPublicDetail(page, raw, today);
-  const ask = contactAction(page.contact, item.name);
+  // Ein Button pro Kontaktweg: erst die eigenen Felder (Telegram, Mail, Telefon), dann weitere Hinweise
+  const actions = allContactActions(page.contactFields, page.contact, item.name);
+  const [ask, ...moreAsks] = actions;
   // Nur für eingeloggte Admins: Verleih direkt hier eintragen (Empfänger gelangen nur dann ins HTML)
   const admin = await isAdmin();
   const adminItem = admin ? toAdminLoanItem(raw, today, getSettings().hiddenTag) : null;
   const borrowers = admin ? knownBorrowers(catalog.items) : [];
-  const contactWays = tokenize(page.contact).filter((t) => t.type !== "text").length;
   const howtoLead = firstSentence(page.howto);
-  const moreLink = page.howto.trim() ? "So läuft's & Kontakt" : contactWays > 1 ? "Alle Kontaktwege" : null;
+  const moreLink = page.howto.trim() ? "So läuft's & Kontakt" : null;
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
@@ -120,19 +120,26 @@ async function ItemContentInner({
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                 {ask && (
                   // Am Handy übernimmt die feste Leiste unten
-                  <div className="hidden md:block">
-                    <a
-                      href={ask.href}
-                      {...(ask.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                      className={buttonVariants({ size: "lg", className: "h-11 px-4 text-base" })}
-                    >
-                      <ContactIcon kind={ask.kind} /> {ask.label}
-                    </a>
+                  <div className="hidden flex-wrap gap-2 md:flex">
+                    {actions.map((a, i) => (
+                      <a
+                        key={a.kind + a.href}
+                        href={a.href}
+                        {...(a.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                        className={buttonVariants({
+                          size: "lg",
+                          variant: i === 0 ? "default" : "secondary",
+                          className: "h-11 px-4 text-base",
+                        })}
+                      >
+                        <ContactIcon kind={a.kind} /> {a.label}
+                      </a>
+                    ))}
                   </div>
                 )}
                 {moreLink && (
                   <a
-                    href="#kontakt"
+                    href={`#kontakt-${item.id}`}
                     className="inline-flex min-h-11 items-center gap-1 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                   >
                     {moreLink} <ArrowDownIcon className="size-3.5" />
@@ -223,7 +230,7 @@ async function ItemContentInner({
             </section>
           )}
 
-          <ContactCard contact={page.contact} howto={page.howto} title={contactTitle(page.contactTitle)} />
+          <ContactCard contact={page.contact} fields={page.contactFields} howto={page.howto} title={contactTitle(page.contactTitle)} anchorId={`kontakt-${item.id}`} />
         </div>
       </div>
 
@@ -232,13 +239,28 @@ async function ItemContentInner({
           {/* Platz, damit die feste Leiste nichts verdeckt */}
           <div className="h-20 md:hidden" aria-hidden />
           <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur supports-backdrop-filter:bg-background/80 md:hidden">
-            <a
-              href={ask.href}
-              {...(ask.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-              className={buttonVariants({ size: "lg", className: "h-12 w-full text-base" })}
-            >
-              <ContactIcon kind={ask.kind} /> {ask.label}
-            </a>
+            <div className="flex gap-2">
+              <a
+                href={ask.href}
+                {...(ask.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                className={buttonVariants({ size: "lg", className: "h-12 min-w-0 flex-1 text-base" })}
+              >
+                <ContactIcon kind={ask.kind} /> <span className="truncate">{ask.label}</span>
+              </a>
+              {/* Weitere Wege als runde Symbol-Buttons, passt in eine Daumenzeile */}
+              {moreAsks.slice(0, 3).map((a) => (
+                <a
+                  key={a.kind + a.href}
+                  href={a.href}
+                  {...(a.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                  aria-label={a.label}
+                  title={a.label}
+                  className={buttonVariants({ variant: "secondary", size: "icon-lg", className: "size-12 shrink-0 rounded-full" })}
+                >
+                  <ContactIcon kind={a.kind} className="size-5" />
+                </a>
+              ))}
+            </div>
           </div>
         </>
       )}

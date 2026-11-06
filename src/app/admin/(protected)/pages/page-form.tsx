@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { LocationNode } from "@/lib/catalog";
 import type { PageConfig, VisibleField } from "@/lib/pages";
 import { ACCENT_PRESETS, accentForeground, avoidStatusHues } from "@/lib/theme";
+import { ContactIcon } from "@/components/contact-icon";
 import { CONTACT_TITLE_MAX, CONTACT_TITLE_SUGGESTIONS, DEFAULT_CONTACT_TITLE } from "@/lib/contact";
 import { cn } from "@/lib/utils";
 
@@ -103,15 +104,18 @@ function LocationTree({
 export function PageForm({ page, locations, fieldOptions, defaultFields, homeboxError }: Props) {
   const [state, action, pending] = useActionState<FormState, FormData>(savePageAction, {});
   const [, startTransition] = useTransition();
+  // Eindeutige IDs: Next behält die vorige Seite unsichtbar im DOM (z. B. „Neue Page“ nach dem Speichern)
+  const uid = page ? `p${page.id}` : "neu";
+  const fid = (name: string) => `${uid}-${name}`;
   const [clientError, setClientError] = useState<FormState | null>(null);
   const err = clientError ?? state;
   // Bei einem Fehler zum betroffenen Abschnitt springen und das erste Feld fokussieren
   useEffect(() => {
     if (!state.field) return;
-    const el = document.getElementById(`abschnitt-${state.field}`);
+    const el = document.getElementById(`${uid}-abschnitt-${state.field}`);
     el?.scrollIntoView({ behavior: "smooth", block: "start" });
     el?.querySelector<HTMLElement>("input:not([type=hidden]):not(:disabled), textarea")?.focus({ preventScroll: true });
-  }, [state]);
+  }, [state, uid]);
   const [selected, setSelected] = useState(() => new Set(page?.locationIds ?? []));
   const [layout, setLayout] = useState<"A" | "B" | "C">(page?.layout ?? "A");
   const [removePassword, setRemovePassword] = useState(false);
@@ -146,12 +150,13 @@ export function PageForm({ page, locations, fieldOptions, defaultFields, homebox
         Felder zurück, auch bei Fehlern (Titel, Texte und gewähltes Logo wären weg).
       */}
       <form
+        noValidate
         onSubmit={(e) => {
           e.preventDefault();
           const fd = new FormData(e.currentTarget);
           if (selected.size === 0) {
             setClientError({ error: "Bitte mindestens einen Lagerort auswählen.", field: "lagerorte" });
-            document.getElementById("abschnitt-lagerorte")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            document.getElementById(fid("abschnitt-lagerorte"))?.scrollIntoView({ behavior: "smooth", block: "start" });
             return;
           }
           setClientError(null);
@@ -160,21 +165,21 @@ export function PageForm({ page, locations, fieldOptions, defaultFields, homebox
       >
         {page && <input type="hidden" name="id" value={page.id} />}
 
-        <Section title="Allgemein" id="abschnitt-allgemein" error={err.field === "allgemein" ? err.error : null}>
+        <Section title="Allgemein" id={fid("abschnitt-allgemein")} error={err.field === "allgemein" ? err.error : null}>
           <div className="space-y-2">
-            <Label htmlFor="title">Titel</Label>
-            <Input id="title" name="title" defaultValue={page?.title} required placeholder="Kollektiv Party-Stuff" />
+            <Label htmlFor={fid("title")}>Titel</Label>
+            <Input id={fid("title")} name="title" defaultValue={page?.title} required placeholder="Kollektiv Party-Stuff" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="slug">Link</Label>
+            <Label htmlFor={fid("slug")}>Link</Label>
             <div className="flex items-center gap-1">
               <span className="text-sm text-muted-foreground">/</span>
-              <Input id="slug" name="slug" defaultValue={page?.slug} placeholder="wird aus dem Titel erzeugt" className="font-mono" />
+              <Input id={fid("slug")} name="slug" defaultValue={page?.slug} placeholder="wird aus dem Titel erzeugt" className="font-mono" />
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="intro">Einleitungstext</Label>
-            <Textarea id="intro" name="intro" defaultValue={page?.intro} rows={3} placeholder="Alles, was wir verleihen. Frag einfach!" />
+            <Label htmlFor={fid("intro")}>Einleitungstext</Label>
+            <Textarea id={fid("intro")} name="intro" defaultValue={page?.intro} rows={3} placeholder="Alles, was wir verleihen. Frag einfach!" />
           </div>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" name="published" defaultChecked={page?.published ?? true} className="size-4 accent-primary" />
@@ -182,7 +187,7 @@ export function PageForm({ page, locations, fieldOptions, defaultFields, homebox
           </label>
         </Section>
 
-        <Section title="Logo" id="abschnitt-logo" error={err.field === "logo" ? err.error : null} hint="Optional. Erscheint oben auf der Page und beim Passwort. PNG, JPG, WebP oder SVG, max. 2 MB. Quer- oder quadratisch, am besten mit transparentem Hintergrund.">
+        <Section title="Logo" id={fid("abschnitt-logo")} error={err.field === "logo" ? err.error : null} hint="Optional. Erscheint oben auf der Page und beim Passwort. PNG, JPG, WebP oder SVG, max. 2 MB. Quer- oder quadratisch, am besten mit transparentem Hintergrund.">
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex h-20 w-40 items-center justify-center rounded-lg border bg-[repeating-conic-gradient(var(--muted)_0_25%,transparent_0_50%)] bg-[length:16px_16px] p-2">
               {shownLogo ? (
@@ -223,7 +228,7 @@ export function PageForm({ page, locations, fieldOptions, defaultFields, homebox
 
         <Section
           title="Lagerorte"
-          id="abschnitt-lagerorte"
+          id={fid("abschnitt-lagerorte")}
           error={err.field === "lagerorte" ? err.error : null}
           hint="Unterorte und alles darin werden automatisch mit angezeigt."
         >
@@ -353,12 +358,14 @@ export function PageForm({ page, locations, fieldOptions, defaultFields, homebox
 
         <Section
           title="Kontakt & Ablauf"
-          hint="Links, Mailadressen, Telefonnummern und Telegram-Namen (@name) werden klickbar. Der erste Kontaktweg wird auf jeder Detailseite zum Button „Anfragen“."
+          id={fid("abschnitt-kontakt")}
+          error={err.field === "kontakt" ? err.error : null}
+          hint="Jeder ausgefüllte Weg wird auf den Detailseiten zu einem Button, in der Reihenfolge Telegram, Mail, Telefon. Der erste ist der große."
         >
           <div className="space-y-2">
-            <Label htmlFor="contactTitle">Überschrift</Label>
+            <Label htmlFor={fid("contactTitle")}>Überschrift</Label>
             <Input
-              id="contactTitle"
+              id={fid("contactTitle")}
               name="contactTitle"
               value={contactHeading}
               onChange={(e) => setContactHeading(e.target.value)}
@@ -386,20 +393,40 @@ export function PageForm({ page, locations, fieldOptions, defaultFields, homebox
             </div>
             <p className="text-sm text-muted-foreground">Steht über dem Kontakt und als Hinweis oben auf der Page. Leer = „{DEFAULT_CONTACT_TITLE}“.</p>
           </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="space-y-1.5">
+              <Label htmlFor={fid("contactTelegram")} className="flex items-center gap-1.5">
+                <ContactIcon kind="telegram" className="size-3.5" /> Telegram
+              </Label>
+              <Input id={fid("contactTelegram")} name="contactTelegram" defaultValue={page?.contactFields.telegram ? `@${page.contactFields.telegram}` : ""} placeholder="@name" autoComplete="off" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor={fid("contactMail")} className="flex items-center gap-1.5">
+                <ContactIcon kind="mail" className="size-3.5" /> Mail
+              </Label>
+              <Input id={fid("contactMail")} name="contactMail" type="email" defaultValue={page?.contactFields.mail} placeholder="verleih@example.org" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor={fid("contactPhone")} className="flex items-center gap-1.5">
+                <ContactIcon kind="phone" className="size-3.5" /> Telefon
+              </Label>
+              <Input id={fid("contactPhone")} name="contactPhone" type="tel" defaultValue={page?.contactFields.phone} placeholder="0171 2345678" />
+            </div>
+          </div>
           <div className="space-y-2">
-            <Label htmlFor="contact">Kontakt</Label>
+            <Label htmlFor={fid("contact")}>Weitere Hinweise (optional)</Label>
             <Textarea
-              id="contact"
+              id={fid("contact")}
               name="contact"
               defaultValue={page?.contact}
               rows={3}
-              placeholder={"verleih@example.org, @telegramname oder https://signal.me/#p/…"}
+              placeholder={"z. B. „Schreib gern auch in die Signal-Gruppe“ oder ein WhatsApp-/Signal-Link"}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="howto">So läuft&apos;s</Label>
+            <Label htmlFor={fid("howto")}>So läuft&apos;s</Label>
             <Textarea
-              id="howto"
+              id={fid("howto")}
               name="howto"
               defaultValue={page?.howto}
               rows={4}
@@ -415,7 +442,7 @@ export function PageForm({ page, locations, fieldOptions, defaultFields, homebox
 
         <Section
           title="Passwort"
-          id="abschnitt-passwort"
+          id={fid("abschnitt-passwort")}
           error={err.field === "passwort" ? err.error : null}
           hint={page?.hasPassword ? "Diese Page ist geschützt. Ein neues Passwort sperrt alle bisherigen Besucher aus." : "Optional. Ohne Passwort kann jeder mit dem Link die Page sehen."}
         >
@@ -451,7 +478,7 @@ export function PageForm({ page, locations, fieldOptions, defaultFields, homebox
               {err.field ? (
                 <>
                   Nicht gespeichert.{" "}
-                  <a href={`#abschnitt-${err.field}`} className="font-medium underline underline-offset-4">
+                  <a href={`#${fid(`abschnitt-${err.field}`)}`} className="font-medium underline underline-offset-4">
                     Zum Feld
                   </a>
                 </>

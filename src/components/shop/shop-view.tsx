@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { LinkifiedText } from "@/components/linkified-text";
 import type { PublicItem, PublicPage } from "@/lib/public-view";
-import { DEFAULT_CONTACT_TITLE } from "@/lib/contact";
+import { ContactIcon } from "@/components/contact-icon";
+import { DEFAULT_CONTACT_TITLE, fieldActions, type ContactAction, type ContactFields } from "@/lib/contact";
 import { cn } from "@/lib/utils";
 import { ItemCard, ItemRow } from "./item-card";
 import { PageLogo } from "./page-logo";
@@ -245,11 +246,14 @@ function Grid({
   items,
   total,
   slug,
+  anchorId,
   onReset,
   onShowMore,
   list = false,
 }: {
   list?: boolean;
+  /** Sprungziel für den Skip-Link, eindeutig pro Page */
+  anchorId: string;
   items: PublicItem[];
   total: number;
   slug: string;
@@ -258,7 +262,7 @@ function Grid({
 }) {
   if (items.length === 0) {
     return (
-      <div id="teile" className="flex scroll-mt-24 flex-col items-center gap-3 rounded-xl border border-dashed px-6 py-16 text-center">
+      <div id={anchorId} className="flex scroll-mt-24 flex-col items-center gap-3 rounded-xl border border-dashed px-6 py-16 text-center">
         <PackageSearchIcon className="size-10 text-muted-foreground" strokeWidth={1.25} />
         <div>
           <p className="font-medium">Nichts gefunden</p>
@@ -272,7 +276,7 @@ function Grid({
   }
   const rest = total - items.length;
   return (
-    <div id="teile" className="scroll-mt-24 space-y-6">
+    <div id={anchorId} className="scroll-mt-24 space-y-6">
       {list ? (
         <ul className="divide-y overflow-hidden rounded-xl border bg-card">
           {items.map((item) => (
@@ -302,31 +306,54 @@ function Grid({
   );
 }
 
-/** Kontakt und „So läuft's“. Anker #kontakt für die Hinweise weiter oben. */
+/** Kontakt und „So läuft's“. Sprungziel für die Hinweise weiter oben. */
 export function ContactCard({
   contact,
+  fields,
   howto,
   title = DEFAULT_CONTACT_TITLE,
   className,
-  anchor = true,
+  anchorId,
 }: {
   contact: string;
+  /** Telegram, Mail, Telefon aus den eigenen Feldern */
+  fields?: ContactFields;
   howto?: string;
   /** Überschrift, pro Page einstellbar */
   title?: string;
   className?: string;
-  /** false für die zweite Kopie (Desktop-Seitenleiste), damit #kontakt eindeutig bleibt */
-  anchor?: boolean;
+  /**
+   * Sprungziel, eindeutig pro Page/Item (Next behält vorige Seiten unsichtbar im DOM; ein
+   * gemeinsames „#kontakt“ würde sonst dort landen). Weglassen für die zweite Kopie.
+   */
+  anchorId?: string;
 }) {
-  if (!contact.trim() && !howto?.trim()) return null;
+  const ways = fields ? fieldActions(fields) : [];
+  if (!contact.trim() && !howto?.trim() && ways.length === 0) return null;
   return (
-    <section id={anchor ? "kontakt" : undefined} className={cn("scroll-mt-24 space-y-3 rounded-xl border bg-muted/40 p-4", className)}>
-      {contact.trim() && (
+    <section id={anchorId} className={cn("scroll-mt-24 space-y-3 rounded-xl border bg-muted/40 p-4", className)}>
+      {(contact.trim() || ways.length > 0) && (
         <div>
-          <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold">
+          <h2 className="mb-1.5 flex items-center gap-2 text-sm font-semibold">
             <MessageCircleIcon className="size-4" /> {title}
           </h2>
-          <LinkifiedText text={contact} className="text-sm text-muted-foreground" />
+          {ways.length > 0 && (
+            <ul className="mb-1.5 space-y-0.5 text-sm">
+              {ways.map((w) => (
+                <li key={w.kind}>
+                  <a
+                    href={w.kind === "mail" ? w.href.split("?")[0] : w.href}
+                    {...(w.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                    className="inline-flex min-h-8 items-center gap-2 font-medium text-primary [overflow-wrap:anywhere]"
+                  >
+                    <ContactIcon kind={w.kind} className="size-4" />
+                    <span className="underline underline-offset-4">{wayText(w, fields!)}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+          {contact.trim() && <LinkifiedText text={contact} className="text-sm text-muted-foreground" />}
         </div>
       )}
       {howto?.trim() && (
@@ -339,12 +366,25 @@ export function ContactCard({
   );
 }
 
+/** Sichtbarer Text eines Kontaktwegs aus den eigenen Feldern */
+function wayText(w: ContactAction, f: ContactFields) {
+  if (w.kind === "telegram") return `@${f.telegram}`;
+  if (w.kind === "mail") return f.mail;
+  if (w.kind === "phone") return f.phone;
+  return w.label;
+}
+
+function hasContact(page: PublicPage) {
+  const f = page.contactFields;
+  return !!(page.contact.trim() || page.howto.trim() || f.telegram || f.mail || f.phone);
+}
+
 /** Kurzer Hinweis oben, wenn der Kontakt erst weit unten kommt */
 function ContactHint({ page, className }: { page: PublicPage; className?: string }) {
-  if (!page.contact.trim() && !page.howto.trim()) return null;
+  if (!hasContact(page)) return null;
   return (
     <a
-      href="#kontakt"
+      href={`#kontakt-${page.slug}`}
       className={cn(
         "inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline",
         className,
@@ -367,10 +407,10 @@ function ResultCount({ shown, total, onlyAvailable }: { shown: number; total: nu
   );
 }
 
-function SkipLink() {
+function SkipLink({ href }: { href: string }) {
   return (
     <a
-      href="#teile"
+      href={href}
       className="sr-only z-50 rounded-md bg-background px-3 py-2 text-sm font-medium shadow-md focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
     >
       Zu den Teilen springen
@@ -403,7 +443,7 @@ export function ShopView({ page, locations, items }: Props) {
   if (page.layout === "C") {
     return (
       <div className="flex-1">
-        <SkipLink />
+        <SkipLink href={`#teile-${page.slug}`} />
         <header className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur supports-backdrop-filter:bg-background/70">
           <div className="mx-auto flex max-w-4xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-center gap-3">
@@ -421,8 +461,8 @@ export function ShopView({ page, locations, items }: Props) {
             <TagChips tags={tags} f={f} />
           </div>
           <CountRow f={f} total={items.length} hasLent={hasLent} />
-          <Grid list items={f.visible} total={f.filtered.length} slug={page.slug} onReset={reset} onShowMore={f.showMore} />
-          <ContactCard contact={page.contact} howto={page.howto} title={page.contactTitle} className="mt-8" />
+          <Grid list items={f.visible} total={f.filtered.length} slug={page.slug} anchorId={`teile-${page.slug}`} onReset={reset} onShowMore={f.showMore} />
+          <ContactCard contact={page.contact} fields={page.contactFields} howto={page.howto} title={page.contactTitle} className="mt-8" anchorId={`kontakt-${page.slug}`} />
         </main>
       </div>
     );
@@ -431,7 +471,7 @@ export function ShopView({ page, locations, items }: Props) {
   if (page.layout === "B") {
     return (
       <div className="flex-1">
-        <SkipLink />
+        <SkipLink href={`#teile-${page.slug}`} />
         <header
           className="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 text-white dark:from-zinc-900 dark:via-zinc-950 dark:to-black"
           style={page.accent ? { background: "linear-gradient(135deg, var(--accent-header), #09090b)" } : undefined}
@@ -447,9 +487,9 @@ export function ShopView({ page, locations, items }: Props) {
             {page.intro && (
               <LinkifiedText text={page.intro} className="mt-3 max-w-2xl text-base text-white/80 [&_a]:text-white" />
             )}
-            {(page.contact.trim() || page.howto.trim()) && (
+            {hasContact(page) && (
               <a
-                href="#kontakt"
+                href={`#kontakt-${page.slug}`}
                 className="mt-3 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-white underline-offset-4 hover:underline"
               >
                 <MessageCircleIcon className="size-4" />
@@ -471,8 +511,8 @@ export function ShopView({ page, locations, items }: Props) {
             <TagChips tags={tags} f={f} />
           </div>
           <CountRow f={f} total={items.length} hasLent={hasLent} />
-          <Grid items={f.visible} total={f.filtered.length} slug={page.slug} onReset={reset} onShowMore={f.showMore} />
-          <ContactCard contact={page.contact} howto={page.howto} title={page.contactTitle} className="mt-8" />
+          <Grid items={f.visible} total={f.filtered.length} slug={page.slug} anchorId={`teile-${page.slug}`} onReset={reset} onShowMore={f.showMore} />
+          <ContactCard contact={page.contact} fields={page.contactFields} howto={page.howto} title={page.contactTitle} className="mt-8" anchorId={`kontakt-${page.slug}`} />
         </main>
       </div>
     );
@@ -481,7 +521,7 @@ export function ShopView({ page, locations, items }: Props) {
   // Layout A: klassischer Shop
   return (
     <div className="flex-1">
-      <SkipLink />
+      <SkipLink href={`#teile-${page.slug}`} />
       <header className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur supports-backdrop-filter:bg-background/70">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
@@ -538,7 +578,7 @@ export function ShopView({ page, locations, items }: Props) {
                 <AvailableToggle checked={f.onlyAvailable} onChange={f.setOnlyAvailable} />
               </div>
             )}
-            <ContactCard contact={page.contact} howto={page.howto} title={page.contactTitle} anchor={false} />
+            <ContactCard contact={page.contact} fields={page.contactFields} howto={page.howto} title={page.contactTitle} />
           </div>
         </aside>
         <main className="min-w-0 flex-1 space-y-4">
@@ -549,9 +589,9 @@ export function ShopView({ page, locations, items }: Props) {
             <TagChips tags={tags} f={f} />
           </div>
           <CountRow f={f} total={items.length} hasLent={hasLent} toggleClassName="md:hidden" />
-          <Grid items={f.visible} total={f.filtered.length} slug={page.slug} onReset={reset} onShowMore={f.showMore} />
+          <Grid items={f.visible} total={f.filtered.length} slug={page.slug} anchorId={`teile-${page.slug}`} onReset={reset} onShowMore={f.showMore} />
           <div className="md:hidden">
-            <ContactCard contact={page.contact} howto={page.howto} title={page.contactTitle} className="mt-8" />
+            <ContactCard contact={page.contact} fields={page.contactFields} howto={page.howto} title={page.contactTitle} className="mt-8" anchorId={`kontakt-${page.slug}`} />
           </div>
         </main>
       </div>

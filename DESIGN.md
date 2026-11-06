@@ -268,6 +268,9 @@ Ist der Admin eingeloggt, zeigt die öffentliche Detailseite unter Status und La
 ### Admin-Navigation
 Der aktive Tab hat eine 12 % Orange-Tönung mit Markisen-Schrift. Inaktive Tabs sind bleistiftgrau, beim Hover kommt eine Regalgrau-Fläche. Beim Tastaturfokus zeigen alle Tabs einen 3px-Ring in Orange.
 
+### Kontaktwege
+Eigene Felder für Telegram, Mail und Telefon (in dieser Reihenfolge), darunter „Weitere Hinweise“ als Freitext. Jeder Weg wird zu einem Button: der erste im Akzent, weitere in Regalgrau (secondary). Am Handy in der festen Leiste der erste breit, weitere als 48px-Symbol-Buttons. Im Kontaktkasten die Wege als Liste mit Symbol (Papierflieger, Umschlag, Hörer). Sprungziele sind pro Page/Item eindeutig (`kontakt-<slug>`, `kontakt-<itemId>`), weil Next vorige Seiten unsichtbar im DOM behält.
+
 ### Anfrage-Button (Detailseite)
 Am Handy als feste Leiste unten (48px Button, volle Breite, Safe-Area), am Desktop direkt unter Status und Lagerort: Primär-Button 44px hoch mit Sprechblase („Per Mail anfragen“, „Per Signal anfragen“ …). Er nutzt den ersten Kontaktweg der Page, bei Mail mit Betreff und Text samt Item-Name. Daneben der Textlink „So läuft's & Kontakt ↓“ zum Kontaktkasten (#kontakt), „Alle Kontaktwege“ nur bei mehreren Wegen. Darunter der erste Satz aus „So läuft's“ als Kurzinfo. Auf Listen gibt es denselben Hinweis als Textlink über den Filtern, wenn der Kontakt erst unten steht.
 

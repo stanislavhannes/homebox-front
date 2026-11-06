@@ -38,38 +38,85 @@ export function contactKind(type: "url" | "mail" | "phone" | "telegram", href: s
  * Erster Kontaktweg aus dem Kontaktfeld der Page als Button-Ziel, mit vorausgefüllter Nachricht.
  * Mail bekommt Betreff und Text, WhatsApp den Text. Sonst null (kein Button).
  */
-export function contactAction(contact: string, itemName?: string): ContactAction | null {
+/**
+ * Alle Kontaktwege aus dem Kontaktfeld als Button-Ziele, in der Reihenfolge des Felds, ohne
+ * Doppelte. Mail bekommt Betreff und Text, WhatsApp den Text. Normale Webseiten zählen nicht.
+ */
+export function contactActions(contact: string, itemName?: string): ContactAction[] {
   const message = itemName
     ? `Hallo, ich würde mir gern „${itemName}“ ausleihen. Wann würde es passen?`
     : "Hallo, ich würde mir gern etwas bei euch ausleihen.";
+  const out: ContactAction[] = [];
+  const seen = new Set<string>();
+  const add = (a: ContactAction) => {
+    if (seen.has(a.kind + a.href)) return;
+    seen.add(a.kind + a.href);
+    out.push(a);
+  };
   for (const t of tokenize(contact)) {
-    if (t.type === "mail") {
+    if (t.type === "text") continue;
+    const kind = contactKind(t.type, t.href);
+    if (kind === "mail") {
       const subject = itemName ? `Ausleihen: ${itemName}` : "Ausleihen";
-      return {
+      add({
         href: `${t.href}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`,
         label: "Per Mail anfragen",
         external: false,
-        kind: "mail",
-      };
-    }
-    if (t.type === "url") {
-      let host = "";
-      try {
-        host = new URL(t.href).hostname.replace(/^www\./, "");
-      } catch {
-        continue;
-      }
-      if (host === "wa.me" || host.endsWith("whatsapp.com")) {
-        const u = new URL(t.href);
-        u.searchParams.set("text", message);
-        return { href: u.toString(), label: "Per WhatsApp anfragen", external: true, kind: "whatsapp" };
-      }
-      if (host === "signal.me" || host === "signal.group") return { href: t.href, label: "Per Signal anfragen", external: true, kind: "signal" };
-      if (host === "t.me" || host === "telegram.me") return { href: t.href, label: "Per Telegram anfragen", external: true, kind: "telegram" };
-      continue; // normale Webseiten sind kein Kontaktweg
-    }
-    if (t.type === "telegram") return { href: t.href, label: "Per Telegram anfragen", external: true, kind: "telegram" };
-    if (t.type === "phone") return { href: t.href, label: "Anrufen", external: false, kind: "phone" };
+        kind,
+      });
+    } else if (kind === "whatsapp") {
+      const u = new URL(t.href);
+      u.searchParams.set("text", message);
+      add({ href: u.toString(), label: "Per WhatsApp anfragen", external: true, kind });
+    } else if (kind === "signal") add({ href: t.href, label: "Per Signal anfragen", external: true, kind });
+    else if (kind === "telegram") add({ href: t.href, label: "Per Telegram anfragen", external: true, kind });
+    else if (kind === "phone") add({ href: t.href, label: "Anrufen", external: false, kind });
   }
-  return null;
+  return out;
+}
+
+/** Die drei eigenen Kontaktfelder einer Page (normalisiert gespeichert) */
+export type ContactFields = { telegram: string; mail: string; phone: string };
+
+/** „@name“, „t.me/name“, „https://t.me/name“ oder „name“ → „name“. Ungültig → null. */
+export function normalizeTelegram(input: string): string | null {
+  const v = input.trim().replace(/^https?:\/\//i, "").replace(/^(?:t|telegram)\.me\//i, "").replace(/^@/, "");
+  return /^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(v) ? v : null;
+}
+
+export function normalizeMail(input: string): string | null {
+  const v = input.trim();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? v : null;
+}
+
+/** Telefonnummer: Ziffern, Leerzeichen, + / ( ) -, 6–15 Ziffern. Gespeichert wie eingegeben (lesbar). */
+export function normalizePhone(input: string): string | null {
+  const v = input.trim().replace(/\s+/g, " ");
+  const digits = v.replace(/\D/g, "");
+  return /^[+\d][\d ()/-]*$/.test(v) && digits.length >= 6 && digits.length <= 15 ? v : null;
+}
+
+/** Kontaktwege aus den eigenen Feldern, Reihenfolge Telegram, Mail, Telefon */
+export function fieldActions(f: ContactFields, itemName?: string): ContactAction[] {
+  const parts: string[] = [];
+  if (f.telegram) parts.push(`@${f.telegram}`);
+  if (f.mail) parts.push(f.mail);
+  if (f.phone) parts.push(f.phone);
+  return contactActions(parts.join("\n"), itemName);
+}
+
+/** Alle Wege für Buttons: erst die eigenen Felder, dann was in „Weitere Hinweise“ steht */
+export function allContactActions(f: ContactFields, freeText: string, itemName?: string): ContactAction[] {
+  const seen = new Set<string>();
+  return [...fieldActions(f, itemName), ...contactActions(freeText, itemName)].filter((a) => {
+    const k = a.kind + a.href.split("?")[0];
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+/** Erster Kontaktweg (Hauptbutton) */
+export function contactAction(contact: string, itemName?: string): ContactAction | null {
+  return contactActions(contact, itemName)[0] ?? null;
 }
