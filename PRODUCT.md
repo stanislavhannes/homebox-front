@@ -48,8 +48,7 @@ Kein eigenes Inventarsystem, sondern ein Fenster auf Homebox: Homebox bleibt die
 
 ## Evidence on Hand
 
-- Echtes Inventar liegt in Homebox (`https://homebox.example.org`); lokal ohne Token läuft ein Mock-Modus mit Beispieldaten (`HOMEBOX_MOCK=1`).
-- Design-Dokument: `docs/superpowers/specs/2026-11-06-homebox-front-design.md`.
+- Echtes Inventar liegt in Homebox (Adresse in `HOMEBOX_URL`); lokal ohne Token läuft ein Mock-Modus mit Beispieldaten (`HOMEBOX_MOCK=1`).
 - Keine Testimonials, Nutzerzahlen oder Fotos von Verleih-Situationen vorhanden; nichts davon erfinden.
 
 ## Product Principles

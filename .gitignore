@@ -44,3 +44,7 @@ next-env.d.ts
 /data
 !.env.example
 /.superpowers
+
+# Arbeitsnotizen (Design-Reviews, Specs) nur lokal
+/.impeccable
+/docs/superpowers
