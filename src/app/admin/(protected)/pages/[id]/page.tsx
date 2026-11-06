@@ -36,7 +36,7 @@ export default async function EditPage({ params, searchParams }: PageProps<"/adm
         </Link>
       </div>
       {saved && (
-        <p className="mt-3 flex items-center gap-2 text-sm text-[var(--admin-success)]">
+        <p role="status" className="mt-3 flex items-center gap-2 text-sm text-[var(--admin-success)]">
           <CheckCircle2Icon className="size-4" /> Gespeichert.
         </p>
       )}

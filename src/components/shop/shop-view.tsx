@@ -154,7 +154,7 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
 
 function AvailableToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <label className="flex min-h-9 cursor-pointer items-center gap-2 text-sm select-none">
+    <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm select-none">
       <input
         type="checkbox"
         checked={checked}

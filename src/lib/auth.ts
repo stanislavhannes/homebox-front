@@ -101,13 +101,20 @@ export async function unlockPage(page: PageConfig) {
 const attempts = new Map<string, { count: number; resetAt: number }>();
 
 /** true = Versuch erlaubt. 10 Versuche pro 10 Minuten und Schlüssel. */
-export function allowAttempt(key: string, max = 10, windowMs = 10 * 60_000): boolean {
+/** Gesperrt, wenn in den letzten 10 Minuten zu viele FEHLversuche kamen. Erfolgreiche zählen nicht. */
+export function isRateLimited(key: string, max = 10): boolean {
+  const entry = attempts.get(key);
+  if (!entry || entry.resetAt < Date.now()) return false;
+  return entry.count >= max;
+}
+
+export function recordFailedAttempt(key: string, windowMs = 10 * 60_000) {
   const now = Date.now();
   const entry = attempts.get(key);
-  if (!entry || entry.resetAt < now) {
-    attempts.set(key, { count: 1, resetAt: now + windowMs });
-    return true;
-  }
-  entry.count++;
-  return entry.count <= max;
+  if (!entry || entry.resetAt < now) attempts.set(key, { count: 1, resetAt: now + windowMs });
+  else entry.count++;
+}
+
+export function clearAttempts(key: string) {
+  attempts.delete(key);
 }

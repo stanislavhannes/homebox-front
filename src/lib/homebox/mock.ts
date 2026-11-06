@@ -68,6 +68,8 @@ const seeds: Seed[] = [
     "Wasserwaage 120 cm", "Schraubzwingen (6er Set)", "Ratschenkasten 1/2\"", "Drehmomentschlüssel", "Bit-Set 100-teilig",
     "Bohrhammer SDS-plus", "Fliesenschneider", "Tapetenablöser", "Farbsprühsystem", "Nass-/Trockensauger",
     "Kompressor 50 l", "Stehleiter 6 Stufen", "Gerüstbock (2 Stück)", "Spanngurte (8er Set)", "Sackkarre",
+    // Randfall: sehr langer Name mit Emoji und Kompositum
+    "🔧 Hochleistungs-Akkuwinkelschleiferaufsatzadapterset für Edelstahlrohrbearbeitung inkl. Transportkoffer, Ersatzscheiben und Bedienungsanleitung (2. Generation)",
   ].map((name, i): Seed => ({
     id: `it-regal-${i + 1}`,
     name,

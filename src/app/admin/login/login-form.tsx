@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { AppLogo } from "@/components/app-logo";
 import { loginAction, type FormState } from "@/app/admin/actions";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,11 @@ import { Label } from "@/components/ui/label";
 
 export function LoginForm() {
   const [state, action, pending] = useActionState<FormState, FormData>(loginAction, {});
+  const input = useRef<HTMLInputElement>(null);
+  // Nach falschem Passwort direkt neu tippen können
+  useEffect(() => {
+    if (state.error) input.current?.focus();
+  }, [state]);
   return (
     <form action={action} className="w-full max-w-sm space-y-5 rounded-2xl border bg-card p-6 shadow-sm">
       <div className="flex flex-col items-center gap-3 text-center">
@@ -21,6 +26,7 @@ export function LoginForm() {
       <div className="space-y-2">
         <Label htmlFor="admin-password">Admin-Passwort</Label>
         <Input
+          ref={input}
           id="admin-password"
           name="password"
           type="password"

@@ -150,6 +150,10 @@
   --admin-active-text: #f0955a;
   --admin-success: #8fb59f;
 }
+.admin-theme :focus-visible {
+  outline: 2px solid var(--primary) !important;
+  outline-offset: 2px;
+}
 .admin-theme ::selection {
   background: color-mix(in oklab, var(--awning) 28%, transparent);
 }

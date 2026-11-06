@@ -15,7 +15,7 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/logo/[slug]">) 
   let logo = getPageLogo(page.id);
   if (!logo) return new Response("Nicht gefunden", { status: 404 });
   // Uploads von vor dem automatischen Verkleinern einmalig nachziehen
-  if (logo.type !== "image/svg+xml" && logo.bytes.length > 120_000) {
+  if (logo.type !== "image/svg+xml" && logo.bytes.length > 30_000) {
     const small = await shrinkLogo(logo.bytes, logo.type);
     if (small.bytes.length < logo.bytes.length) {
       replacePageLogoBytes(page.id, small);

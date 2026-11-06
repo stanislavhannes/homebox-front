@@ -5,6 +5,7 @@ import { requireAdminPage } from "@/lib/admin-guard";
 import { getLocationTree, type LocationNode } from "@/lib/catalog";
 import { listPages } from "@/lib/pages";
 import { cn } from "@/lib/utils";
+import { CopyLinkButton } from "./copy-link-button";
 
 // Prüft die Admin-Session bei jedem Aufruf, darf daher blockieren.
 export const instant = false;
@@ -64,10 +65,11 @@ export default async function AdminPagesList() {
                   {p.locationIds.map((id) => names.get(id) ?? "unbekannter Lagerort").join(", ")}
                 </p>
               </div>
+              <CopyLinkButton slug={p.slug} />
               <Link
                 href={`/${p.slug}`}
                 target="_blank"
-                className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }), "max-md:h-10")}
               >
                 Ansehen <ExternalLinkIcon />
               </Link>

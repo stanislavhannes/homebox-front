@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 import { deletePageAction, savePageAction, type FormState } from "@/app/admin/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,12 +19,29 @@ type Props = {
   homeboxError?: string;
 };
 
-function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+function Section({
+  title,
+  hint,
+  id,
+  error,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  id?: string;
+  error?: string | null;
+  children: React.ReactNode;
+}) {
   return (
-    <section className="grid gap-4 border-b py-6 md:grid-cols-[14rem_1fr]">
+    <section id={id} className="grid scroll-mt-20 gap-4 border-b py-6 md:grid-cols-[14rem_1fr]">
       <div>
         <h2 className="text-sm font-semibold">{title}</h2>
         {hint && <p className="mt-1 text-sm text-muted-foreground">{hint}</p>}
+        {error && (
+          <p role="alert" className="mt-2 text-sm font-medium text-destructive">
+            {error}
+          </p>
+        )}
       </div>
       <div className="space-y-4">{children}</div>
     </section>
@@ -36,29 +53,45 @@ function LocationTree({
   selected,
   toggle,
   depth = 0,
+  coveredBy = null,
 }: {
   nodes: LocationNode[];
   selected: Set<string>;
   toggle: (id: string) => void;
   depth?: number;
+  /** Name des gewählten Oberorts: dann ist dieser Ort schon enthalten */
+  coveredBy?: string | null;
 }) {
   return (
     <ul className={cn(depth > 0 && "ml-5 border-l pl-3")}>
       {nodes.map((n) => (
         <li key={n.id}>
-          <label className="flex cursor-pointer items-center gap-2 rounded-md py-1 text-sm hover:bg-muted/50">
+          <label
+            className={cn(
+              "flex min-h-9 items-center gap-2 rounded-md py-1 text-sm",
+              coveredBy ? "text-muted-foreground" : "cursor-pointer hover:bg-muted/50",
+            )}
+          >
             <input
               type="checkbox"
-              name="locationIds"
+              name={coveredBy ? undefined : "locationIds"}
               value={n.id}
-              checked={selected.has(n.id)}
+              checked={coveredBy ? true : selected.has(n.id)}
+              disabled={!!coveredBy}
               onChange={() => toggle(n.id)}
               className="size-4 accent-primary"
             />
             {n.name}
+            {coveredBy && <span className="text-xs">(über {coveredBy} enthalten)</span>}
           </label>
           {n.children.length > 0 && (
-            <LocationTree nodes={n.children} selected={selected} toggle={toggle} depth={depth + 1} />
+            <LocationTree
+              nodes={n.children}
+              selected={selected}
+              toggle={toggle}
+              depth={depth + 1}
+              coveredBy={coveredBy ?? (selected.has(n.id) ? n.name : null)}
+            />
           )}
         </li>
       ))}
@@ -68,6 +101,16 @@ function LocationTree({
 
 export function PageForm({ page, locations, fieldOptions, defaultFields, homeboxError }: Props) {
   const [state, action, pending] = useActionState<FormState, FormData>(savePageAction, {});
+  const [, startTransition] = useTransition();
+  const [clientError, setClientError] = useState<FormState | null>(null);
+  const err = clientError ?? state;
+  // Bei einem Fehler zum betroffenen Abschnitt springen und das erste Feld fokussieren
+  useEffect(() => {
+    if (!state.field) return;
+    const el = document.getElementById(`abschnitt-${state.field}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    el?.querySelector<HTMLElement>("input:not([type=hidden]):not(:disabled), textarea")?.focus({ preventScroll: true });
+  }, [state]);
   const [selected, setSelected] = useState(() => new Set(page?.locationIds ?? []));
   const [layout, setLayout] = useState<"A" | "B" | "C">(page?.layout ?? "A");
   const [removePassword, setRemovePassword] = useState(false);
@@ -96,10 +139,26 @@ export function PageForm({ page, locations, fieldOptions, defaultFields, homebox
 
   return (
     <div>
-      <form action={action}>
+      {/*
+        Absenden per onSubmit statt action-Prop: React setzt sonst nach jeder Server-Antwort alle
+        Felder zurück, auch bei Fehlern (Titel, Texte und gewähltes Logo wären weg).
+      */}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          const fd = new FormData(e.currentTarget);
+          if (selected.size === 0) {
+            setClientError({ error: "Bitte mindestens einen Lagerort auswählen.", field: "lagerorte" });
+            document.getElementById("abschnitt-lagerorte")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            return;
+          }
+          setClientError(null);
+          startTransition(() => action(fd));
+        }}
+      >
         {page && <input type="hidden" name="id" value={page.id} />}
 
-        <Section title="Allgemein">
+        <Section title="Allgemein" id="abschnitt-allgemein" error={err.field === "allgemein" ? err.error : null}>
           <div className="space-y-2">
             <Label htmlFor="title">Titel</Label>
             <Input id="title" name="title" defaultValue={page?.title} required placeholder="Kollektiv Party-Stuff" />
@@ -121,7 +180,7 @@ export function PageForm({ page, locations, fieldOptions, defaultFields, homebox
           </label>
         </Section>
 
-        <Section title="Logo" hint="Optional. Erscheint oben auf der Page und beim Passwort. PNG, JPG, WebP oder SVG, max. 2 MB. Quer- oder quadratisch, am besten mit transparentem Hintergrund.">
+        <Section title="Logo" id="abschnitt-logo" error={err.field === "logo" ? err.error : null} hint="Optional. Erscheint oben auf der Page und beim Passwort. PNG, JPG, WebP oder SVG, max. 2 MB. Quer- oder quadratisch, am besten mit transparentem Hintergrund.">
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex h-20 w-40 items-center justify-center rounded-lg border bg-[repeating-conic-gradient(var(--muted)_0_25%,transparent_0_50%)] bg-[length:16px_16px] p-2">
               {shownLogo ? (
@@ -134,6 +193,7 @@ export function PageForm({ page, locations, fieldOptions, defaultFields, homebox
             <div className="space-y-2">
               <Input
                 name="logo"
+                aria-label="Logo-Datei auswählen"
                 type="file"
                 accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
                 disabled={removeLogo}
@@ -159,7 +219,12 @@ export function PageForm({ page, locations, fieldOptions, defaultFields, homebox
           </div>
         </Section>
 
-        <Section title="Lagerorte" hint="Unterorte und alles darin werden automatisch mit angezeigt.">
+        <Section
+          title="Lagerorte"
+          id="abschnitt-lagerorte"
+          error={err.field === "lagerorte" ? err.error : null}
+          hint="Unterorte und alles darin werden automatisch mit angezeigt."
+        >
           {homeboxError ? (
             <p className="text-sm text-destructive">{homeboxError}</p>
           ) : locations.length === 0 ? (
@@ -197,7 +262,7 @@ export function PageForm({ page, locations, fieldOptions, defaultFields, homebox
                 aria-pressed={layout === value}
                 className={cn(
                   "rounded-xl border-2 p-4 text-left transition",
-                  layout === value ? "border-primary bg-primary/5" : "hover:bg-muted/50",
+                  layout === value ? "border-primary" : "hover:bg-muted/50",
                 )}
               >
                 <span className="font-medium">
@@ -224,7 +289,7 @@ export function PageForm({ page, locations, fieldOptions, defaultFields, homebox
                   accent === p.value ? "border-foreground ring-2 ring-foreground/20" : "hover:bg-muted/50",
                 )}
               >
-                <span className="size-7 rounded-full border border-black/10" style={{ background: p.swatch }} />
+                <span className="size-7 rounded-full border border-black/10 dark:border-white/30" style={{ background: p.swatch }} />
                 {p.label}
               </button>
             ))}
@@ -241,7 +306,7 @@ export function PageForm({ page, locations, fieldOptions, defaultFields, homebox
                 className="size-7 cursor-pointer rounded-full border-0 bg-transparent p-0 [&::-webkit-color-swatch]:rounded-full [&::-webkit-color-swatch]:border-black/10 [&::-webkit-color-swatch-wrapper]:p-0"
                 aria-label="Eigene Farbe"
               />
-              Eigene{accent && !isPreset ? `: ${accent}` : ""}
+              Eigene{accent && !isPreset ? `: ${shown}` : ""}
             </label>
           </div>
           {shifted?.zone && (
@@ -317,11 +382,14 @@ export function PageForm({ page, locations, fieldOptions, defaultFields, homebox
 
         <Section
           title="Passwort"
+          id="abschnitt-passwort"
+          error={err.field === "passwort" ? err.error : null}
           hint={page?.hasPassword ? "Diese Page ist geschützt. Ein neues Passwort sperrt alle bisherigen Besucher aus." : "Optional. Ohne Passwort kann jeder mit dem Link die Page sehen."}
         >
           <Input
             name="password"
             type="password"
+            aria-label={page?.hasPassword ? "Neues Passwort" : "Passwort"}
             autoComplete="new-password"
             placeholder={page?.hasPassword ? "Neues Passwort (leer = unverändert)" : "Passwort (optional)"}
             disabled={removePassword}
@@ -340,13 +408,23 @@ export function PageForm({ page, locations, fieldOptions, defaultFields, homebox
           )}
         </Section>
 
-        <div className="flex flex-wrap items-center gap-3 py-6">
-          <Button type="submit" disabled={pending}>
+        {/* Speichern bleibt unten sichtbar, das Formular ist lang */}
+        <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center gap-3 border-t bg-background/95 px-4 py-3 backdrop-blur supports-backdrop-filter:bg-background/80">
+          <Button type="submit" disabled={pending} className="h-10 px-4">
             {pending ? "Speichert…" : "Speichern"}
           </Button>
-          {state.error && (
-            <p role="alert" className="text-sm text-destructive">
-              {state.error}
+          {err.error && (
+            <p className="text-sm text-destructive" {...(err.field ? {} : { role: "alert" })}>
+              {err.field ? (
+                <>
+                  Nicht gespeichert.{" "}
+                  <a href={`#abschnitt-${err.field}`} className="font-medium underline underline-offset-4">
+                    Zum Feld
+                  </a>
+                </>
+              ) : (
+                err.error
+              )}
             </p>
           )}
         </div>

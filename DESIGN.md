@@ -227,7 +227,7 @@ Klein, ruhig und präzise; sie dienen, statt zu werben.
 - **Outline:** Papier mit Haarlinie, Hover in Regalgrau. Standard für sekundäre Aktionen wie „Weitere anzeigen“ oder „Filter zurücksetzen“.
 - **Ghost:** ohne Rahmen, Hover in Regalgrau. Für „Abmelden“ und Navigation.
 - **Destructive:** zarter Rotgrund (10 %) mit roter Schrift, nie vollflächig rot.
-- **Focus:** Auf öffentlichen Seiten ein voller 2px-Rahmen in der Akzentfarbe mit 2px Abstand (`.public-scope :focus-visible`), im Admin der 3px-Ring. Beim Drücken 1px nach unten.
+- **Focus:** Überall ein voller 2px-Rahmen in der Akzentfarbe mit 2px Abstand (`.public-scope` und `.admin-theme :focus-visible`), nie ein halbtransparenter Ring. Beim Drücken 1px nach unten.
 
 ### Chips (Filter)
 - **Reihen:** Lagerorte (mit „Alle“) und darunter Kategorien (Homebox-Tags, Antippen filtert, nochmal hebt auf). Am Handy horizontal scrollend, am Desktop umbrechend. In Layout A stehen beide am Desktop als Listen in der Seitenleiste. „Nur verfügbare“ ist kein Chip, sondern ein Schalter neben der Anzahl, und erscheint nur, wenn etwas verliehen ist.
@@ -255,6 +255,12 @@ Das Herzstück: ein kleines Schild, das ehrlich sagt, ob etwas da ist.
 ### Navigation
 - **Admin-Kopf:** App-Logo (28px) mit „Homebox Front“ in 600. Daneben Textlinks als Tabs (siehe Admin-Navigation), rechts „Abmelden“ als Ghost-Button.
 - **Zurück-Link (Detail):** Pfeil, Page-Logo (20px) und Page-Titel in Bleistiftgrau, beim Hover in Tinte.
+
+### Admin-Formulare
+Fehler stehen am betroffenen Abschnitt (rot, `role="alert"`), die Seite springt dorthin und fokussiert das erste Feld. Unten neben dem mitlaufenden Speichern-Balken steht nur „Nicht gespeichert. Zum Feld“. Formulare senden per `onSubmit` statt per `action`-Prop, damit Eingaben bei Fehlern erhalten bleiben. Toasts sind neutral (keine Ampelfarben), Erfolg im Admin in Homebox-Grün.
+
+### Verleih-Liste (Admin)
+Verliehene Items zuerst, je Zeile ein ruhiger Outline-Button „Verleihen“ (Primär nur „Eintragen“ im offenen Formular), „Ist zurück“ für Rückgaben, „Alles verliehen“ statt deaktiviertem Button. Datum mit Schnellwahl (Bis Sonntag, 1 Woche, 2 Wochen), bekannte Namen als Vorschläge. 50 Zeilen, dann „Weitere anzeigen“. Am Handy alle Bedienelemente mindestens 40px hoch.
 
 ### Admin-Navigation
 Der aktive Tab hat eine 12 % Orange-Tönung mit Markisen-Schrift. Inaktive Tabs sind bleistiftgrau, beim Hover kommt eine Regalgrau-Fläche. Beim Tastaturfokus zeigen alle Tabs einen 3px-Ring in Orange.

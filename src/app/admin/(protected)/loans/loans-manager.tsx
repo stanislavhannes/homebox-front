@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState, useTransition } from "react";
+import { useActionState, useId, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { EyeOffIcon, PackageIcon, RefreshCwIcon, SearchIcon, TriangleAlertIcon } from "lucide-react";
@@ -55,12 +55,21 @@ export function LoansManager({ items, today }: { items: AdminLoanItem[]; today: 
 
   const filtered = useMemo(() => {
     const terms = normalize(query).split(/\s+/).filter(Boolean);
-    return items.filter((it) => {
-      if (onlyLent && !it.loans.length && !it.invalid.length) return false;
-      const hay = normalize(`${it.name} ${it.assetId} ${it.locationPath} ${it.loans.map((l) => l.borrower ?? "").join(" ")}`);
-      return terms.every((t) => hay.includes(t));
-    });
+    const hasEntries = (it: AdminLoanItem) => it.loans.length > 0 || it.invalid.length > 0;
+    return items
+      .filter((it) => {
+        if (onlyLent && !hasEntries(it)) return false;
+        const hay = normalize(`${it.name} ${it.assetId} ${it.locationPath} ${it.loans.map((l) => l.borrower ?? "").join(" ")}`);
+        return terms.every((t) => hay.includes(t));
+      })
+      // Was gerade draußen ist, steht oben
+      .sort((a, b) => Number(hasEntries(b)) - Number(hasEntries(a)));
   }, [items, query, onlyLent]);
+  // Bekannte Namen als Vorschläge im Feld „An wen“
+  const borrowers = useMemo(
+    () => [...new Set(items.flatMap((it) => it.loans.map((l) => l.borrower).filter((b): b is string => !!b)))].sort(),
+    [items],
+  );
 
   return (
     <div className="space-y-4">
@@ -71,22 +80,25 @@ export function LoansManager({ items, today }: { items: AdminLoanItem[]; today: 
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Item, Asset-ID, Lagerort oder Person suchen…"
-            className="h-9 pl-9"
+            placeholder="Item, Lagerort oder Person…"
+            aria-label="Items suchen"
+            className="h-11 pl-9 text-base md:h-9 md:text-sm"
           />
         </div>
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex min-h-11 items-center gap-2 text-sm md:min-h-9">
           <input type="checkbox" checked={onlyLent} onChange={(e) => setOnlyLent(e.target.checked)} className="size-4 accent-primary" />
           Nur mit Verleih-Einträgen
         </label>
         <Button
           variant="outline"
           size="sm"
+          className="max-md:h-10"
           disabled={refreshing}
           onClick={() =>
             startRefresh(async () => {
               await refreshHomeboxAction();
               router.refresh();
+              toast.success("Aktuellen Stand aus Homebox geladen.");
             })
           }
         >
@@ -100,7 +112,7 @@ export function LoansManager({ items, today }: { items: AdminLoanItem[]; today: 
 
       <ul className="divide-y rounded-xl border">
         {filtered.slice(0, limit).map((it) => (
-          <LoanRow key={it.id} item={it} today={today} />
+          <LoanRow key={it.id} item={it} today={today} borrowers={borrowers} />
         ))}
       </ul>
 
@@ -117,31 +129,50 @@ export function LoansManager({ items, today }: { items: AdminLoanItem[]; today: 
   );
 }
 
-function LoanRow({ item, today }: { item: AdminLoanItem; today: string }) {
+/** YYYY-MM-DD in n Tagen ab heute (heute aus Berlin, Rechnung in UTC-Mittag ohne Zeitzonen-Sprung) */
+function addDays(today: string, n: number) {
+  const d = new Date(`${today}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function nextSunday(today: string) {
+  const day = new Date(`${today}T12:00:00Z`).getUTCDay(); // 0 = Sonntag
+  return addDays(today, day === 0 ? 7 : 7 - day);
+}
+
+function LoanRow({ item, today, borrowers }: { item: AdminLoanItem; today: string; borrowers: string[] }) {
   const router = useRouter();
+  const listId = useId();
   const [open, setOpen] = useState(false);
+  const [until, setUntil] = useState("");
   const [busy, startTransition] = useTransition();
-  const [, lend, lending] = useActionState<LoanResult, FormData>(async (prev, fd) => {
+  const [, startLend] = useTransition();
+  const [lendState, lend, lending] = useActionState<LoanResult, FormData>(async (prev, fd) => {
     const res = await lendAction(prev, fd);
     if (res.ok) {
-      toast.success(res.ok);
+      toast.success(`${item.name}: ${res.ok}`);
       setOpen(false);
+      setUntil("");
       router.refresh();
-    } else if (res.error) {
-      toast.error(res.error);
     }
     return res;
   }, {});
 
-  const run = (fn: () => Promise<LoanResult>) =>
+  const run = (fn: () => Promise<LoanResult>, okText: string) =>
     startTransition(async () => {
       const res = await fn();
       if (res.error) toast.error(res.error);
       else {
-        toast.success(res.ok ?? "Gespeichert");
+        toast.success(okText);
         router.refresh();
       }
     });
+  const presets = [
+    { label: "Bis Sonntag", value: nextSunday(today) },
+    { label: "1 Woche", value: addDays(today, 7) },
+    { label: "2 Wochen", value: addDays(today, 14) },
+  ];
 
   const hasExpired = item.loans.some((l) => !l.active);
 
@@ -183,12 +214,18 @@ function LoanRow({ item, today }: { item: AdminLoanItem; today: string }) {
                   </span>
                   {!l.active && <span className="text-xs no-underline">(abgelaufen)</span>}
                   <Button
-                    variant="ghost"
-                    size="xs"
+                    variant="outline"
+                    size="sm"
+                    className="max-md:h-10"
                     disabled={busy}
-                    onClick={() => run(() => returnLoanAction(item.id, l.key))}
+                    onClick={() =>
+                      run(
+                        () => returnLoanAction(item.id, l.key),
+                        l.active ? `${item.name} ist zurück.` : `Abgelaufener Eintrag bei ${item.name} entfernt.`,
+                      )
+                    }
                   >
-                    {l.active ? "Zurück" : "Entfernen"}
+                    {l.active ? "Ist zurück" : "Entfernen"}
                   </Button>
                 </li>
               ))}
@@ -203,34 +240,95 @@ function LoanRow({ item, today }: { item: AdminLoanItem; today: string }) {
       </div>
 
       <div className="flex shrink-0 flex-wrap gap-2 sm:flex-col sm:items-end">
-        <Button size="sm" variant={open ? "secondary" : "default"} disabled={item.available === 0 || busy} onClick={() => setOpen(!open)}>
-          {open ? "Abbrechen" : "Verleihen"}
-        </Button>
+        {item.available === 0 && !open ? (
+          <span className="flex min-h-8 items-center text-sm text-muted-foreground">Alles verliehen</span>
+        ) : (
+          <Button
+            size="sm"
+            variant={open ? "secondary" : "outline"}
+            className="max-md:h-10"
+            disabled={busy}
+            onClick={() => setOpen(!open)}
+            aria-expanded={open}
+          >
+            {open ? "Abbrechen" : "Verleihen"}
+          </Button>
+        )}
         {hasExpired && (
-          <Button size="sm" variant="ghost" disabled={busy} onClick={() => run(() => cleanupExpiredAction(item.id))}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="max-md:h-10"
+            disabled={busy}
+            onClick={() => run(() => cleanupExpiredAction(item.id), `Abgelaufene Einträge bei ${item.name} entfernt.`)}
+          >
             Abgelaufene aufräumen
           </Button>
         )}
       </div>
 
       {open && (
-        <form action={lend} className="flex w-full basis-full flex-wrap items-end gap-3 rounded-lg bg-muted/50 p-3">
+        // onSubmit statt action-Prop: sonst leert React bei Fehlern (z. B. überbucht) alle Felder
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const fd = new FormData(e.currentTarget);
+            startLend(() => lend(fd));
+          }}
+          className="flex w-full basis-full flex-wrap items-end gap-3 rounded-lg bg-muted/50 p-3"
+        >
           <input type="hidden" name="itemId" value={item.id} />
           <label className="space-y-1 text-sm">
             <span className="block text-muted-foreground">Menge</span>
-            <Input name="quantity" type="number" min={1} max={item.available} defaultValue={1} className="h-9 w-20" required />
+            <Input name="quantity" type="number" min={1} max={item.available} defaultValue={1} className="h-11 w-20 text-base md:h-9 md:text-sm" required />
           </label>
-          <label className="space-y-1 text-sm">
-            <span className="block text-muted-foreground">Bis einschließlich</span>
-            <Input name="until" type="date" min={today} required autoFocus className="h-9 w-40" />
-          </label>
+          <div className="space-y-1 text-sm">
+            <label htmlFor={`${listId}-until`} className="block text-muted-foreground">
+              Bis einschließlich
+            </label>
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                id={`${listId}-until`}
+                name="until"
+                type="date"
+                min={today}
+                required
+                autoFocus
+                value={until}
+                onChange={(e) => setUntil(e.target.value)}
+                className="h-11 w-40 text-base md:h-9 md:text-sm"
+              />
+              {presets.map((p) => (
+                <Button
+                  key={p.label}
+                  type="button"
+                  size="sm"
+                  variant={until === p.value ? "secondary" : "ghost"}
+                  className="max-md:h-10"
+                  onClick={() => setUntil(p.value)}
+                >
+                  {p.label}
+                </Button>
+              ))}
+            </div>
+          </div>
           <label className="min-w-40 flex-1 space-y-1 text-sm">
             <span className="block text-muted-foreground">An wen (optional, nicht öffentlich)</span>
-            <Input name="borrower" maxLength={80} className="h-9" />
+            <Input name="borrower" maxLength={80} list={`${listId}-borrowers`} autoComplete="off" className="h-11 text-base md:h-9 md:text-sm" />
+            <datalist id={`${listId}-borrowers`}>
+              {borrowers.map((b) => (
+                <option key={b} value={b} />
+              ))}
+            </datalist>
           </label>
-          <Button type="submit" size="sm" className="h-9" disabled={lending}>
+          <Button type="submit" size="sm" className="h-11 px-4 md:h-9" disabled={lending}>
             {lending ? "Speichert in Homebox…" : "Eintragen"}
           </Button>
+          {lendState.error && (
+            <p role="alert" className="basis-full text-sm font-medium text-destructive">
+              {lendState.error}
+            </p>
+          )}
         </form>
       )}
     </li>

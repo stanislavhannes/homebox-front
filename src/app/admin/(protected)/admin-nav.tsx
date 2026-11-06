@@ -22,7 +22,7 @@ export function AdminNav() {
             href={l.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "rounded-md px-3 py-1.5 text-sm transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring",
+              "rounded-md px-3 py-1.5 text-sm transition-colors max-sm:py-2.5",
               active
                 ? "bg-[var(--admin-active-bg)] font-medium text-[var(--admin-active-text)]"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground",

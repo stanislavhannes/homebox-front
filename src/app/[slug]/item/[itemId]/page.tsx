@@ -83,7 +83,7 @@ async function ItemContentInner({
 
         <div className="min-w-0 space-y-6">
           <div className="space-y-3">
-            <h1 className="text-2xl font-bold tracking-tight text-balance sm:text-3xl">{item.name}</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-balance hyphens-auto [overflow-wrap:anywhere] sm:text-3xl">{item.name}</h1>
             <div className="flex flex-wrap items-center gap-3">
               <AvailabilityBadge status={item.status} label={item.availabilityLabel} className="px-3 py-1 text-sm" />
               {item.status === "partial" && item.nextReturn && (

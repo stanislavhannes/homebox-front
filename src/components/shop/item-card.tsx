@@ -48,7 +48,7 @@ export function ItemCard({ item, slug }: { item: PublicItem; slug: string }) {
   return (
     <Link
       href={`/${slug}/item/${item.id}`}
-      className="group flex flex-col overflow-hidden rounded-xl border bg-card text-card-foreground shadow-xs transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+      className="group flex flex-col overflow-hidden rounded-xl border bg-card text-card-foreground shadow-xs transition hover:shadow-md motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
     >
       <div className="relative aspect-[4/3] overflow-hidden bg-muted">
         {item.thumbUrl ? (
@@ -57,7 +57,7 @@ export function ItemCard({ item, slug }: { item: PublicItem; slug: string }) {
             src={item.thumbUrl}
             alt=""
             loading="lazy"
-            className="size-full object-cover transition duration-300 group-hover:scale-[1.03]"
+            className="size-full object-cover transition duration-300 motion-safe:group-hover:scale-[1.03]"
           />
         ) : (
           <div className="flex size-full items-center justify-center text-muted-foreground/60">

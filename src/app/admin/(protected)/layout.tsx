@@ -16,14 +16,16 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
     <div className="admin-theme flex flex-1 flex-col">
       <header className="border-b bg-background">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-          <Link href="/admin" className="flex items-center gap-2 font-semibold">
+          <Link href="/admin" className="flex min-h-10 items-center gap-2 font-semibold">
             <AppLogo className="size-7" /> Homebox Front
           </Link>
-          <Suspense fallback={<nav className="h-8" />}>
-            <AdminNav />
-          </Suspense>
+          <div className="max-sm:order-last max-sm:w-full">
+            <Suspense fallback={<nav className="h-8" />}>
+              <AdminNav />
+            </Suspense>
+          </div>
           <form action={logoutAction} className="ml-auto">
-            <Button type="submit" variant="ghost" size="sm">
+            <Button type="submit" variant="ghost" size="sm" className="max-sm:h-10">
               Abmelden
             </Button>
           </form>

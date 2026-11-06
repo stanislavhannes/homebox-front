@@ -22,7 +22,7 @@ export function SettingsForm({ hiddenTag }: { hiddenTag: string }) {
         <Button type="submit" disabled={pending}>
           Speichern
         </Button>
-        {state.ok && <p className="text-sm text-[var(--admin-success)]">{state.ok}</p>}
+        {state.ok && <p role="status" className="text-sm text-[var(--admin-success)]">{state.ok}</p>}
         {state.error && <p className="text-sm text-destructive">{state.error}</p>}
       </div>
     </form>

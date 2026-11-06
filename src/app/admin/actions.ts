@@ -4,7 +4,9 @@ import { updateTag } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import {
-  allowAttempt,
+  clearAttempts,
+  isRateLimited,
+  recordFailedAttempt,
   checkAdminPassword,
   endAdminSession,
   hashPassword,
@@ -40,16 +42,20 @@ async function requireAdmin() {
 
 // ---------- Login ----------
 
-export type FormState = { error?: string; ok?: string };
+/** field = Abschnitt im Formular, zu dem der Fehler gehört (Scroll + Markierung) */
+export type FormState = { error?: string; ok?: string; field?: "allgemein" | "lagerorte" | "logo" | "passwort" };
 
 export async function loginAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
-  if (!allowAttempt(`admin:${ip}`)) {
+  const key = `admin:${ip}`;
+  if (isRateLimited(key)) {
     return { error: "Zu viele Versuche. Bitte in ein paar Minuten noch mal probieren." };
   }
   if (!checkAdminPassword(String(formData.get("password") ?? ""))) {
+    recordFailedAttempt(key);
     return { error: "Falsches Passwort." };
   }
+  clearAttempts(key);
   await startAdminSession();
   redirect("/admin");
 }
@@ -98,19 +104,19 @@ export async function savePageAction(_prev: FormState, formData: FormData): Prom
     howto: String(formData.get("howto") ?? "").trim(),
   };
 
-  if (!title) return { error: "Bitte einen Titel angeben." };
-  if (!slug) return { error: "Der Link braucht mindestens einen Buchstaben oder eine Zahl." };
-  if (RESERVED_SLUGS.has(slug)) return { error: `„${slug}“ ist reserviert, bitte einen anderen Link wählen.` };
+  if (!title) return { error: "Bitte einen Titel angeben.", field: "allgemein" };
+  if (!slug) return { error: "Der Link braucht mindestens einen Buchstaben oder eine Zahl.", field: "allgemein" };
+  if (RESERVED_SLUGS.has(slug)) return { error: `„${slug}“ ist reserviert, bitte einen anderen Link wählen.`, field: "allgemein" };
   const existing = getPageBySlug(slug);
-  if (existing && existing.id !== id) return { error: `Der Link „/${slug}“ ist schon vergeben.` };
-  if (input.locationIds.length === 0) return { error: "Bitte mindestens einen Lagerort auswählen." };
+  if (existing && existing.id !== id) return { error: `Der Link „/${slug}“ ist schon vergeben.`, field: "allgemein" };
+  if (input.locationIds.length === 0) return { error: "Bitte mindestens einen Lagerort auswählen.", field: "lagerorte" };
 
   const newPassword = String(formData.get("password") ?? "");
   const removePassword = formData.get("removePassword") === "on";
   let passwordHash: string | null | undefined = undefined;
   if (removePassword) passwordHash = null;
   else if (newPassword) {
-    if (newPassword.length < 4) return { error: "Das Passwort sollte mindestens 4 Zeichen haben." };
+    if (newPassword.length < 4) return { error: "Das Passwort sollte mindestens 4 Zeichen haben.", field: "passwort" };
     passwordHash = hashPassword(newPassword);
   }
 
@@ -119,10 +125,10 @@ export async function savePageAction(_prev: FormState, formData: FormData): Prom
   const logoFile = formData.get("logo");
   if (formData.get("removeLogo") === "on") logo = null;
   else if (logoFile instanceof File && logoFile.size > 0) {
-    if (logoFile.size > LOGO_MAX_BYTES) return { error: "Das Logo ist zu groß (max. 2 MB)." };
+    if (logoFile.size > LOGO_MAX_BYTES) return { error: "Das Logo ist zu groß (max. 2 MB).", field: "logo" };
     const buf = await logoFile.arrayBuffer();
     const type = sniffContentType(buf, null);
-    if (!LOGO_TYPES.includes(type)) return { error: "Das Logo muss ein PNG, JPG, WebP, GIF oder SVG sein." };
+    if (!LOGO_TYPES.includes(type)) return { error: "Das Logo muss ein PNG, JPG, WebP, GIF oder SVG sein.", field: "logo" };
     logo = await shrinkLogo(new Uint8Array(buf), type);
   }
 
@@ -167,7 +173,7 @@ export async function lendAction(_prev: LoanResult, formData: FormData): Promise
   const itemId = String(formData.get("itemId") ?? "");
   const quantity = Math.floor(Number(formData.get("quantity") || 1));
   const until = String(formData.get("until") ?? "");
-  const borrower = String(formData.get("borrower") ?? "").trim();
+  const borrower = String(formData.get("borrower") ?? "").trim().slice(0, 80);
   const today = todayInBerlin();
 
   if (!itemId) return { error: "Item fehlt." };
@@ -191,7 +197,8 @@ export async function lendAction(_prev: LoanResult, formData: FormData): Promise
       };
     });
     updateTag(HOMEBOX_TAG);
-    return { ok: `Eingetragen: ${formatLoan({ quantity, until, borrower })}`, loanText };
+    const [y, m, d] = until.split("-");
+    return { ok: `${quantity}× verliehen bis ${d}.${m}.${y}${borrower ? ` an ${borrower}` : ""}.`, loanText };
   } catch (err) {
     return { error: (err as Error).message };
   }
