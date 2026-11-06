@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Homebox Front
 
-## Getting Started
+Öffentliches Schaufenster für das Homebox-Inventar: Pages mit eigenem Link zeigen einen oder
+mehrere Lagerorte wie einen Online-Shop, inkl. Verfügbarkeit („verliehen bis …“). Homebox bleibt
+die Datenquelle; die App liest per API-Key und schreibt nur das Custom Field `Verleih`.
 
-First, run the development server:
+Design: [`docs/superpowers/specs/2026-11-06-homebox-front-design.md`](docs/superpowers/specs/2026-11-06-homebox-front-design.md)
+
+## Starten
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local   # ausfüllen (Token, Admin-Passwort, SESSION_SECRET)
+npm install
+npm run dev                  # http://localhost:3000, Verwaltung unter /admin
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Ohne Homebox-Token ausprobieren: `HOMEBOX_MOCK=1` in `.env.local`. Dann gibt es Beispieldaten
+(Kollektiv-Lager, Garage …); Verleihe landen nur im Speicher.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Produktion lokal: `npm run build && npm run start`. Node ≥ 22.5 (nutzt `node:sqlite`).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Wie es funktioniert
 
-## Learn More
+| Was | Wo |
+|---|---|
+| Pages, Passwörter, Feldauswahl, Logo, Farbe, versteckter Tag | SQLite `data/app.db` (App-eigen) |
+| Items, Bilder, Anleitungen, Verleih | Homebox |
+| Verleih-Format | Custom Field `Verleih` am Item: `6× bis 2026-11-14 (Max); 2× bis 2026-12-01` |
 
-To learn more about Next.js, take a look at the following resources:
+- **Verfügbarkeit** = Anzahl minus aktive Verleihe. Ein Verleih „bis 14.11.“ gilt am 14.11. noch,
+  ab 15.11. ist das Teil wieder verfügbar (Zeitzone Europe/Berlin). Empfänger sieht nur der Admin.
+- **Verleih eintragen**: `/admin/loans` → „Verleihen“. Die App liest das Item frisch, ändert nur
+  `Verleih`, schickt den kompletten PUT (Homebox löscht sonst fehlende Felder) und vergleicht
+  danach, ob sich etwas anderes verändert hat. Das Feld kann auch direkt in Homebox bearbeitet
+  werden; unlesbare Einträge bleiben erhalten und werden im Admin markiert.
+- **Sichtbarkeit**: Alles unter den gewählten Lagerorten (inkl. Unterorte und Items in Items),
+  außer archivierte Items und Items mit dem versteckten Tag (Standard `privat`, unter
+  Einstellungen änderbar) samt deren Inhalt.
+- **Pro Page**: Layout A (Klassischer Shop), B (Schaufenster) oder C (Kompakte Liste), optionales Logo
+  (PNG/JPG/WebP/GIF/SVG, max. 2 MB, erscheint auch auf der Passwortseite) und eine Akzentfarbe
+  (Vorschläge oder frei wählbar). Es werden 24 Teile auf einmal gezeigt, danach „Weitere anzeigen“.
+- **Cache**: Homebox-Daten 60 s; nach Verleih-Aktionen sofort aktuell. Änderungen direkt in Homebox
+  erscheinen nach spätestens einer Minute, oder sofort über „Aus Homebox neu laden“ im Admin.
+- **Sicherheit**: Der API-Key bleibt auf dem Server. Bilder/Anleitungen laufen über
+  `/api/img/<page>/<item>/<anhang>`, der prüft, dass das Item auf der Page liegt und die Page
+  freigeschaltet ist.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Tests
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm test          # Verleih-Parser, Verfügbarkeit, PUT-Body (vitest)
+```
 
-## Deploy on Vercel
+Ein Browser-Durchlauf (Login, Pages, Passwort, Suche/Filter, Proxy-Schutz, Verleih, Mobile)
+wurde gegen den Mock-Modus gefahren; gegen die echte Homebox steht der Test noch aus (siehe
+„Vor dem ersten echten Einsatz“).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Vor dem ersten echten Einsatz
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. API-Key in Homebox anlegen und als `HOMEBOX_TOKEN` in `.env.local` eintragen, `HOMEBOX_MOCK=0`.
+2. Einmal an einem **Test-Item** verleihen und zurückgeben und in Homebox prüfen, dass Name,
+   Notizen, Tags, Bilder und andere Felder unverändert sind. Die App bricht mit einer Meldung ab,
+   falls der Abgleich nach dem Speichern Unterschiede findet.
