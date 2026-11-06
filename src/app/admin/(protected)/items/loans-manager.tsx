@@ -133,7 +133,6 @@ export function LoansManager({ items, today }: { items: AdminLoanItem[]; today: 
         ))}
       </ul>
 
-      {selected.length > 0 && <div className="h-24" aria-hidden />}
       <BulkLendBar
         selected={selected}
         onRemove={(id) => setPicked((p) => p.filter((x) => x !== id))}

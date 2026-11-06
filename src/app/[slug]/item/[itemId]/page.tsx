@@ -244,9 +244,7 @@ async function ItemContentInner({
 
       {ask && (
         <>
-          {/* Platz, damit die feste Leiste nichts verdeckt */}
-          <div className="h-20 md:hidden" aria-hidden />
-          <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur supports-backdrop-filter:bg-background/80 md:hidden">
+          <div className="cta-bar-mobile fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur supports-backdrop-filter:bg-background/80 md:hidden">
             <div className="flex gap-2">
               <a
                 href={ask.href}

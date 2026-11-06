@@ -178,3 +178,13 @@
 .public-scope ::selection {
   background: color-mix(in oklab, var(--primary) 22%, transparent);
 }
+
+/* Feste Leisten unten (Anfrage-Button am Handy, Auswahl-Leiste): Fußzeile darunter freihalten */
+@media (max-width: 767px) {
+  body:has(.cta-bar-mobile) .site-footer {
+    padding-bottom: 5.5rem;
+  }
+}
+body:has(.cta-bar) .site-footer {
+  padding-bottom: 7rem;
+}

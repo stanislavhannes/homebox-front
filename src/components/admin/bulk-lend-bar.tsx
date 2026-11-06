@@ -67,7 +67,7 @@ export function BulkLendBar({
 
   return (
     <div
-      className="admin-theme fixed inset-x-0 bottom-0 z-40 border-t bg-background pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_-8px_rgb(0_0_0/0.15)]"
+      className="cta-bar admin-theme fixed inset-x-0 bottom-0 z-40 border-t bg-background pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_-8px_rgb(0_0_0/0.15)]"
       role="region"
       aria-label="Auswahl verleihen"
     >

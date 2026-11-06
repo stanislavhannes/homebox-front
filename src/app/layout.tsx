@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Suspense } from "react";
 import { AppTheme } from "@/components/app-theme";
+import { SiteFooter } from "@/components/site-footer";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Suspense fallback={null}>
           <AppTheme>
             {children}
+            <SiteFooter />
             <Toaster position="top-center" />
           </AppTheme>
         </Suspense>
