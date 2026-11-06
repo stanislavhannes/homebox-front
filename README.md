@@ -208,3 +208,7 @@ src/components/shop/       Shop-Ansichten, Kacheln, Galerie, Kontakt
 src/lib/homebox/           Homebox-API-Client, Beispieldaten, sicheres Schreiben
 src/lib/loans.ts           Verleih-Format und Verfügbarkeit
 ```
+
+## Lizenz
+
+[MIT](LICENSE)
