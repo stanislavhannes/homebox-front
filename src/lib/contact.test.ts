@@ -25,4 +25,10 @@ describe("contactAction", () => {
     expect(contactAction("Frag in der Gruppe")).toBeNull();
     expect(contactAction("")).toBeNull();
   });
+  it("Telegram-@name wird zum Telegram-Button", () => {
+    const a = contactAction("Am schnellsten über Telegram @stani_hannes", "Bank")!;
+    expect(a.label).toBe("Per Telegram anfragen");
+    expect(a.href).toBe("https://t.me/stani_hannes");
+    expect(a.external).toBe(true);
+  });
 });

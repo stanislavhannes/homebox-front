@@ -35,6 +35,7 @@ export function contactAction(contact: string, itemName?: string): ContactAction
       if (host === "t.me" || host === "telegram.me") return { href: t.href, label: "Per Telegram anfragen", external: true };
       continue; // normale Webseiten sind kein Kontaktweg
     }
+    if (t.type === "telegram") return { href: t.href, label: "Per Telegram anfragen", external: true };
     if (t.type === "phone") return { href: t.href, label: "Anrufen", external: false };
   }
   return null;

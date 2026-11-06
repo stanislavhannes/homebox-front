@@ -27,4 +27,13 @@ describe("tokenize", () => {
     expect(t).toHaveLength(1);
     expect(t[0].type).toBe("url");
   });
+  it("Telegram: @name und t.me/name, aber keine Mailadresse", () => {
+    const tg = (s: string) =>
+      tokenize(s).flatMap((x) => (x.type === "telegram" ? [[x.value, x.href]] : []));
+    expect(tg("Schreib mir auf Telegram: @stani_hannes.")).toEqual([["@stani_hannes", "https://t.me/stani_hannes"]]);
+    expect(tg("oder t.me/kollektiv_verleih")).toEqual([["t.me/kollektiv_verleih", "https://t.me/kollektiv_verleih"]]);
+    expect(tg("verleih@example.org")).toEqual([]);
+    expect(tg("@abc")).toEqual([]); // zu kurz für Telegram
+    expect(tokenize("verleih@example.org")[0].type).toBe("mail");
+  });
 });

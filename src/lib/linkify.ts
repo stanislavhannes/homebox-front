@@ -1,9 +1,14 @@
 export type Token =
   | { type: "text"; value: string }
-  | { type: "url" | "mail" | "phone"; value: string; href: string };
+  | { type: "url" | "mail" | "phone" | "telegram"; value: string; href: string };
 
+/**
+ * Reihenfolge: URL, Mail, Telefon, Telegram-@name, nacktes t.me/name.
+ * Telegram-Namen: 5–32 Zeichen, Buchstabe zuerst, dann Buchstaben, Ziffern, Unterstrich.
+ * Mailadressen gewinnen, weil ihr Treffer früher im Text beginnt („info@x.de“ ist nie „@x“).
+ */
 const TOKEN_RE =
-  /(https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])|([\w.+-]+@[\w-]+(?:\.[\w-]+)+)|((?<![\w\d+])(?:\+|0)\d[\d /()-]*\d)/g;
+  /(https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])|([\w.+-]+@[\w-]+(?:\.[\w-]+)+)|((?<![\w\d+])(?:\+|0)\d[\d /()-]*\d)|(?<![\w.@/])@([A-Za-z][A-Za-z0-9_]{4,31})(?!\w)|(?<![\w/.])(?:t\.me|telegram\.me)\/([A-Za-z][A-Za-z0-9_]{4,31})(?!\w)/g;
 
 /**
  * Telefonnummern nur, wenn sie wie eine aussehen: Start mit + oder 0, 7–15 Ziffern, mindestens
@@ -24,11 +29,12 @@ export function tokenize(text: string): Token[] {
   let last = 0;
   for (const m of text.matchAll(TOKEN_RE)) {
     const idx = m.index ?? 0;
-    const [whole, url, mail, phone] = m;
+    const [whole, url, mail, phone, tgHandle, tgLink] = m;
     if (phone && !isPhone(phone)) continue;
     if (idx > last) out.push({ type: "text", value: text.slice(last, idx) });
     if (url) out.push({ type: "url", value: whole, href: url });
     else if (mail) out.push({ type: "mail", value: whole, href: `mailto:${mail}` });
+    else if (tgHandle || tgLink) out.push({ type: "telegram", value: whole, href: `https://t.me/${tgHandle || tgLink}` });
     else out.push({ type: "phone", value: whole, href: `tel:${phone.replace(/[^\d+]/g, "")}` });
     last = idx + whole.length;
   }

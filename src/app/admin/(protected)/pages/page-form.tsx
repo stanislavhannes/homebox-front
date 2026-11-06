@@ -351,7 +351,7 @@ export function PageForm({ page, locations, fieldOptions, defaultFields, homebox
 
         <Section
           title="Kontakt & Ablauf"
-          hint="Links, Mailadressen und Telefonnummern werden klickbar. Der erste Kontaktweg wird auf jeder Detailseite zum Button „Anfragen“."
+          hint="Links, Mailadressen, Telefonnummern und Telegram-Namen (@name) werden klickbar. Der erste Kontaktweg wird auf jeder Detailseite zum Button „Anfragen“."
         >
           <div className="space-y-2">
             <Label htmlFor="contact">Kontakt</Label>
@@ -360,7 +360,7 @@ export function PageForm({ page, locations, fieldOptions, defaultFields, homebox
               name="contact"
               defaultValue={page?.contact}
               rows={3}
-              placeholder={"verleih@example.org oder https://signal.me/#p/…"}
+              placeholder={"verleih@example.org, @telegramname oder https://signal.me/#p/…"}
             />
           </div>
           <div className="space-y-2">

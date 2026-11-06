@@ -12,7 +12,7 @@ export function LinkifiedText({ text, className }: { text: string; className?: s
             key={i}
             href={t.href}
             className="font-medium text-primary underline underline-offset-4 [overflow-wrap:anywhere]"
-            {...(t.type === "url" ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+            {...(t.type === "url" || t.type === "telegram" ? { target: "_blank", rel: "noopener noreferrer" } : {})}
           >
             {t.value}
           </a>
