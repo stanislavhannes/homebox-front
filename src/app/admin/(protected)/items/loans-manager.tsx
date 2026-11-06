@@ -14,6 +14,8 @@ import {
 import { AvailabilityBadge } from "@/components/shop/availability-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { BulkLendBar } from "@/components/admin/bulk-lend-bar";
+import { datePresets } from "@/lib/date-presets";
 import { cn } from "@/lib/utils";
 
 export type AdminLoanItem = {
@@ -48,6 +50,14 @@ export function LoansManager({ items, today }: { items: AdminLoanItem[]; today: 
   const [query, setQueryRaw] = useState("");
   const [onlyLent, setOnlyLentRaw] = useState(false);
   const [limit, setLimit] = useState(ADMIN_PAGE_SIZE);
+  // Mehrfachauswahl zum gemeinsamen Verleihen (Reihenfolge der Auswahl bleibt erhalten)
+  const [picked, setPicked] = useState<string[]>([]);
+  const togglePick = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+  const byId = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
+  const selected = picked
+    .map((id) => byId.get(id))
+    .filter((i): i is AdminLoanItem => !!i && i.available > 0)
+    .map((i) => ({ id: i.id, name: i.name, available: i.available }));
   // Neue Suche oder neuer Filter fängt wieder oben an
   const setQuery = (v: string) => (setQueryRaw(v), setLimit(ADMIN_PAGE_SIZE));
   const setOnlyLent = (v: boolean) => (setOnlyLentRaw(v), setLimit(ADMIN_PAGE_SIZE));
@@ -112,9 +122,25 @@ export function LoansManager({ items, today }: { items: AdminLoanItem[]; today: 
 
       <ul className="divide-y rounded-xl border">
         {filtered.slice(0, limit).map((it) => (
-          <LoanRow key={it.id} item={it} today={today} borrowers={borrowers} />
+          <LoanRow
+            key={it.id}
+            item={it}
+            today={today}
+            borrowers={borrowers}
+            picked={picked.includes(it.id)}
+            onPick={() => togglePick(it.id)}
+          />
         ))}
       </ul>
+
+      {selected.length > 0 && <div className="h-24" aria-hidden />}
+      <BulkLendBar
+        selected={selected}
+        onRemove={(id) => setPicked((p) => p.filter((x) => x !== id))}
+        onClear={() => setPicked([])}
+        today={today}
+        borrowers={borrowers}
+      />
 
       {filtered.length > limit && (
         <div className="flex justify-center">
@@ -129,18 +155,6 @@ export function LoansManager({ items, today }: { items: AdminLoanItem[]; today: 
   );
 }
 
-/** YYYY-MM-DD in n Tagen ab heute (heute aus Berlin, Rechnung in UTC-Mittag ohne Zeitzonen-Sprung) */
-function addDays(today: string, n: number) {
-  const d = new Date(`${today}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-}
-
-function nextSunday(today: string) {
-  const day = new Date(`${today}T12:00:00Z`).getUTCDay(); // 0 = Sonntag
-  return addDays(today, day === 0 ? 7 : 7 - day);
-}
-
 /**
  * Eine Verleih-Zeile. embedded = auf der öffentlichen Detailseite (nur für Admins): ohne Bild,
  * Name und Status, die stehen dort schon.
@@ -150,11 +164,16 @@ export function LoanRow({
   today,
   borrowers,
   embedded = false,
+  picked = false,
+  onPick,
 }: {
   item: AdminLoanItem;
   today: string;
   borrowers: string[];
   embedded?: boolean;
+  /** Mehrfachauswahl (nur in der Liste) */
+  picked?: boolean;
+  onPick?: () => void;
 }) {
   const router = useRouter();
   const listId = useId();
@@ -183,17 +202,25 @@ export function LoanRow({
       }
     });
   const Wrapper = embedded ? "div" : "li";
-  const presets = [
-    { label: "Bis Sonntag", value: nextSunday(today) },
-    { label: "1 Woche", value: addDays(today, 7) },
-    { label: "2 Wochen", value: addDays(today, 14) },
-  ];
+  const presets = datePresets(today);
 
   const hasExpired = item.loans.some((l) => !l.active);
 
   return (
     <Wrapper className={cn("flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start", !embedded && "p-3", busy && "opacity-60")}>
       <div className="flex min-w-0 flex-1 gap-3">
+        {onPick && (
+          <label className="-my-1 -ml-1 flex size-11 shrink-0 cursor-pointer items-center justify-center self-center md:size-9">
+            <input
+              type="checkbox"
+              checked={picked}
+              onChange={onPick}
+              disabled={item.available === 0}
+              aria-label={`${item.name} auswählen`}
+              className="size-4 accent-primary"
+            />
+          </label>
+        )}
         <div className={cn("size-14 shrink-0 overflow-hidden rounded-lg bg-muted", embedded && "hidden")}>
           {item.thumbUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -209,7 +236,7 @@ export function LoanRow({
             <p className="text-sm text-muted-foreground">Gerade nichts verliehen.</p>
           )}
           <div className={cn("flex flex-wrap items-center gap-2", embedded && "hidden")}>
-            <span className="font-medium">{item.name}</span>
+            <span className="min-w-0 font-medium [overflow-wrap:anywhere]">{item.name}</span>
             {item.hidden && (
               <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="Hat den versteckten Tag, erscheint auf keiner Page">
                 <EyeOffIcon className="size-3" /> versteckt

@@ -12,14 +12,46 @@ import { DEFAULT_CONTACT_TITLE, fieldActions, type ContactAction, type ContactFi
 import { cn } from "@/lib/utils";
 import { ItemCard, ItemRow } from "./item-card";
 import { PageLogo } from "./page-logo";
+import { BulkLendBar } from "@/components/admin/bulk-lend-bar";
 
 export type ShopLocation = { id: string; name: string; depth: number; count: number };
+
+/** Nur gesetzt, wenn ein Admin eingeloggt ist: Mehrfachauswahl zum Verleihen */
+export type AdminLend = { today: string; borrowers: string[]; available: Record<string, number> };
 
 type Props = {
   page: PublicPage;
   locations: ShopLocation[];
   items: PublicItem[];
+  adminLend?: AdminLend | null;
 };
+
+type Pick = { picked: Set<string>; toggle: (id: string) => void; available: Record<string, number> } | null;
+
+/** Auswahlkästchen über Karte/Zeile (nicht im Link, sonst wären interaktive Elemente verschachtelt) */
+function PickBox({ pick, item, className }: { pick: Pick; item: PublicItem; className?: string }) {
+  if (!pick) return null;
+  const free = pick.available[item.id] ?? 0;
+  return (
+    <label
+      className={cn(
+        "admin-theme absolute z-10 flex size-10 cursor-pointer items-center justify-center rounded-lg bg-background/90 shadow-sm",
+        free === 0 && "cursor-not-allowed opacity-50",
+        className,
+      )}
+      title={free === 0 ? "Gerade nichts verfügbar" : "Zum gemeinsamen Verleihen auswählen"}
+    >
+      <input
+        type="checkbox"
+        checked={pick.picked.has(item.id)}
+        onChange={() => pick.toggle(item.id)}
+        disabled={free === 0}
+        aria-label={`${item.name} auswählen`}
+        className="size-5 accent-primary"
+      />
+    </label>
+  );
+}
 
 /** So viele Kacheln auf einmal; teilbar durch 2, 3 und 4 Spalten */
 export const PAGE_SIZE = 24;
@@ -247,6 +279,7 @@ function Grid({
   total,
   slug,
   anchorId,
+  pick = null,
   onReset,
   onShowMore,
   list = false,
@@ -254,6 +287,7 @@ function Grid({
   list?: boolean;
   /** Sprungziel für den Skip-Link, eindeutig pro Page */
   anchorId: string;
+  pick?: Pick;
   items: PublicItem[];
   total: number;
   slug: string;
@@ -280,16 +314,24 @@ function Grid({
       {list ? (
         <ul className="divide-y overflow-hidden rounded-xl border bg-card">
           {items.map((item) => (
-            <li key={item.id}>
+            <li key={item.id} className={cn(pick && "relative pl-12")}>
+              <PickBox pick={pick} item={item} className="top-1/2 left-2 -translate-y-1/2" />
               <ItemRow item={item} slug={slug} />
             </li>
           ))}
         </ul>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4">
-          {items.map((item) => (
-            <ItemCard key={item.id} item={item} slug={slug} />
-          ))}
+          {items.map((item) =>
+            pick ? (
+              <div key={item.id} className="relative flex [&>a]:min-w-0 [&>a]:flex-1">
+                <PickBox pick={pick} item={item} className="top-2 left-2" />
+                <ItemCard item={item} slug={slug} />
+              </div>
+            ) : (
+              <ItemCard key={item.id} item={item} slug={slug} />
+            ),
+          )}
         </div>
       )}
       {rest > 0 && (
@@ -418,7 +460,33 @@ function SkipLink({ href }: { href: string }) {
   );
 }
 
-export function ShopView({ page, locations, items }: Props) {
+export function ShopView({ page, locations, items, adminLend = null }: Props) {
+  const [picked, setPicked] = useState<string[]>([]);
+  const pick: Pick = adminLend
+    ? {
+        picked: new Set(picked),
+        toggle: (id) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id])),
+        available: adminLend.available,
+      }
+    : null;
+  const byId = new Map(items.map((i) => [i.id, i]));
+  const selected = adminLend
+    ? picked
+        .filter((id) => (adminLend.available[id] ?? 0) > 0 && byId.has(id))
+        .map((id) => ({ id, name: byId.get(id)!.name, available: adminLend.available[id] }))
+    : [];
+  const bulkBar = adminLend ? (
+    <>
+      {selected.length > 0 && <div className="h-24" aria-hidden />}
+      <BulkLendBar
+        selected={selected}
+        onRemove={(id) => setPicked((p) => p.filter((x) => x !== id))}
+        onClear={() => setPicked([])}
+        today={adminLend.today}
+        borrowers={adminLend.borrowers}
+      />
+    </>
+  ) : null;
   const locationIds = useMemo(() => new Set(locations.map((l) => l.id)), [locations]);
   const tags = useMemo<ShopTag[]>(() => {
     const counts = new Map<string, number>();
@@ -461,8 +529,9 @@ export function ShopView({ page, locations, items }: Props) {
             <TagChips tags={tags} f={f} />
           </div>
           <CountRow f={f} total={items.length} hasLent={hasLent} />
-          <Grid list items={f.visible} total={f.filtered.length} slug={page.slug} anchorId={`teile-${page.slug}`} onReset={reset} onShowMore={f.showMore} />
+          <Grid list items={f.visible} total={f.filtered.length} slug={page.slug} anchorId={`teile-${page.slug}`} onReset={reset} onShowMore={f.showMore} pick={pick} />
           <ContactCard contact={page.contact} fields={page.contactFields} howto={page.howto} title={page.contactTitle} className="mt-8" anchorId={`kontakt-${page.slug}`} />
+          {bulkBar}
         </main>
       </div>
     );
@@ -511,8 +580,9 @@ export function ShopView({ page, locations, items }: Props) {
             <TagChips tags={tags} f={f} />
           </div>
           <CountRow f={f} total={items.length} hasLent={hasLent} />
-          <Grid items={f.visible} total={f.filtered.length} slug={page.slug} anchorId={`teile-${page.slug}`} onReset={reset} onShowMore={f.showMore} />
+          <Grid items={f.visible} total={f.filtered.length} slug={page.slug} anchorId={`teile-${page.slug}`} onReset={reset} onShowMore={f.showMore} pick={pick} />
           <ContactCard contact={page.contact} fields={page.contactFields} howto={page.howto} title={page.contactTitle} className="mt-8" anchorId={`kontakt-${page.slug}`} />
+          {bulkBar}
         </main>
       </div>
     );
@@ -589,7 +659,8 @@ export function ShopView({ page, locations, items }: Props) {
             <TagChips tags={tags} f={f} />
           </div>
           <CountRow f={f} total={items.length} hasLent={hasLent} toggleClassName="md:hidden" />
-          <Grid items={f.visible} total={f.filtered.length} slug={page.slug} anchorId={`teile-${page.slug}`} onReset={reset} onShowMore={f.showMore} />
+          <Grid items={f.visible} total={f.filtered.length} slug={page.slug} anchorId={`teile-${page.slug}`} onReset={reset} onShowMore={f.showMore} pick={pick} />
+          {bulkBar}
           <div className="md:hidden">
             <ContactCard contact={page.contact} fields={page.contactFields} howto={page.howto} title={page.contactTitle} className="mt-8" anchorId={`kontakt-${page.slug}`} />
           </div>

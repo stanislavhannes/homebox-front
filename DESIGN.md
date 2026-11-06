@@ -265,6 +265,9 @@ Verliehene Items zuerst, je Zeile ein ruhiger Outline-Button „Verleihen“ (Pr
 ### Verleih auf der Detailseite (nur Admin)
 Ist der Admin eingeloggt, zeigt die öffentliche Detailseite unter Status und Lagerort einen Kasten „Verleih · Nur für dich sichtbar“ im Admin-Orange (`.admin-theme`, Rahmen 45 % Markisen-Orange). Darin dieselbe Verleih-Zeile wie im Admin, ohne Bild und Kopf. Besucher bekommen weder den Kasten noch Empfänger-Namen ins HTML.
 
+### Mehrfach verleihen (nur Admin)
+Im Admin (Items) und auf öffentlichen Pages für eingeloggte Admins: Auswahlkästchen pro Zeile bzw. oben links auf der Karte (40px, außerhalb des Links), komplett Verliehenes nicht wählbar. Ab einer Auswahl erscheint unten eine deckende Leiste im Admin-Orange: „N ausgewählt · Auswahl leeren · Zusammen verleihen“. Aufgeklappt: Liste mit Menge je Item (bei mehreren Exemplaren), Datum mit Schnellwahl, „An wen“. Fehlschläge stehen pro Item, erfolgreiche verlassen die Auswahl.
+
 ### Admin-Navigation
 Der aktive Tab hat eine 12 % Orange-Tönung mit Markisen-Schrift. Inaktive Tabs sind bleistiftgrau, beim Hover kommt eine Regalgrau-Fläche. Beim Tastaturfokus zeigen alle Tabs einen 3px-Ring in Orange.
 

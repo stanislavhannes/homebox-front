@@ -34,7 +34,7 @@ export function SettingsForm({ hiddenTag, theme }: { hiddenTag: string; theme: "
             >
               <input type="radio" name="theme" value={value} defaultChecked={theme === value} className="size-4 accent-primary" />
               {label}
-              {hint && <span className="text-muted-foreground">({hint})</span>}
+              {hint && <span>({hint})</span>}
             </label>
           ))}
         </div>

@@ -184,6 +184,63 @@ export async function refreshHomeboxAction() {
 
 export type LoanResult = { error?: string; ok?: string; loanText?: string };
 
+/** Mehrere Items auf einmal verleihen (gleiches Datum, gleicher Empfänger). Pro Item eigener Homebox-Schreibvorgang. */
+export type LendManyResult = {
+  ok?: string;
+  error?: string;
+  results?: { itemId: string; ok: boolean; message: string }[];
+};
+
+export async function lendManyAction(input: {
+  items: { itemId: string; quantity: number }[];
+  until: string;
+  borrower: string;
+}): Promise<LendManyResult> {
+  await requireAdmin();
+  const today = todayInBerlin();
+  const until = String(input.until ?? "");
+  const borrower = String(input.borrower ?? "").trim().slice(0, 80);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(until)) return { error: "Bitte ein Rückgabedatum wählen." };
+  if (until < today) return { error: "Das Rückgabedatum liegt in der Vergangenheit." };
+  const items = (input.items ?? []).filter((i) => i && typeof i.itemId === "string").slice(0, 100);
+  if (items.length === 0) return { error: "Keine Items ausgewählt." };
+
+  const results: NonNullable<LendManyResult["results"]> = [];
+  for (const { itemId, quantity: q } of items) {
+    const quantity = Math.floor(Number(q) || 1);
+    if (!(quantity >= 1)) {
+      results.push({ itemId, ok: false, message: "Menge muss mindestens 1 sein." });
+      continue;
+    }
+    try {
+      await updateLoans(itemId, (current, total) => {
+        const a = computeAvailability(total, current.loans, today);
+        if (quantity > a.available) {
+          throw new Error(a.available === 0 ? "Gerade nichts verfügbar." : `Nur noch ${a.available} von ${a.total} verfügbar.`);
+        }
+        return {
+          loans: [...current.loans, { quantity, until, ...(borrower ? { borrower } : {}) }],
+          invalid: current.invalid,
+        };
+      });
+      results.push({ itemId, ok: true, message: `${quantity}× verliehen` });
+    } catch (err) {
+      results.push({ itemId, ok: false, message: (err as Error).message });
+    }
+  }
+  updateTag(HOMEBOX_TAG);
+  const okCount = results.filter((r) => r.ok).length;
+  const [y, m, d] = until.split("-");
+  const when = `bis ${d}.${m}.${y}${borrower ? ` an ${borrower}` : ""}`;
+  if (okCount === results.length) return { ok: `${okCount} ${okCount === 1 ? "Item" : "Items"} verliehen ${when}.`, results };
+  return {
+    error: okCount
+      ? `${okCount} von ${results.length} verliehen ${when}. Bei den anderen ging es nicht.`
+      : "Nichts verliehen.",
+    results,
+  };
+}
+
 export async function lendAction(_prev: LoanResult, formData: FormData): Promise<LoanResult> {
   await requireAdmin();
   const itemId = String(formData.get("itemId") ?? "");

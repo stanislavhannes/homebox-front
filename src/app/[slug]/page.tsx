@@ -5,6 +5,9 @@ import { PasswordForm } from "@/components/shop/password-form";
 import { ShopView } from "@/components/shop/shop-view";
 import { HomeboxUnavailable, ShopSkeleton } from "@/components/shop/states";
 import { getPageBySlug } from "@/lib/pages";
+import { knownBorrowers } from "@/lib/admin-loans";
+import { isAdmin } from "@/lib/auth";
+import { computeAvailability, parseLoans } from "@/lib/loans";
 import {
   loadCatalog,
   loadPage,
@@ -58,11 +61,22 @@ async function ShopContentInner({
   const items = catalog.items.map((it) => toPublicItem(page, it, today));
   // Liegt alles am selben Ort, sagt der Lagerort auf jeder Karte nichts
   if (new Set(items.map((i) => i.locationName)).size <= 1) for (const i of items) i.locationName = null;
+  // Nur für eingeloggte Admins: Daten zum gemeinsamen Verleihen (Mengen, Namensvorschläge)
+  const adminLend = (await isAdmin())
+    ? {
+        today,
+        borrowers: knownBorrowers(catalog.items),
+        available: Object.fromEntries(
+          catalog.items.map((it) => [it.id, computeAvailability(it.quantity, parseLoans(it.loanText).loans, today).available]),
+        ),
+      }
+    : null;
   return (
     <ShopView
       page={toPublicPage(page)}
       locations={publicLocations(catalog.locations, items)}
       items={items}
+      adminLend={adminLend}
     />
   );
 }
