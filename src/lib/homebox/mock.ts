@@ -1,4 +1,6 @@
 import "server-only";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { HomeboxApi } from "./client";
 import type { HbEntity, HbTreeItem } from "./types";
 
@@ -86,17 +88,36 @@ function tag(name: string) {
   return { id: tagIds.get(name)!, name };
 }
 
+/**
+ * Beispielfotos (KI-generiert, frei verwendbar) unter mock-photos/<item-id>.webp, weitere
+ * Ansichten als <item-id>-2.webp usw. Ohne Datei gibt es den farbigen SVG-Platzhalter.
+ */
+const PHOTO_DIR = join(/*turbopackIgnore: true*/ process.cwd(), "src/lib/homebox/mock-photos");
+
+function photoFile(itemId: string, n: number): string | null {
+  const f = join(PHOTO_DIR, n === 1 ? `${itemId}.webp` : `${itemId}-${n}.webp`);
+  return existsSync(f) ? f : null;
+}
+
+/** Anzahl Fotos: echte Dateien, wenn vorhanden (keine Doppelten), sonst wie im Seed */
+function photoCount(s: Seed): number {
+  if (!photoFile(s.id, 1)) return s.photos ?? 0;
+  let n = 1;
+  while (photoFile(s.id, n + 1)) n++;
+  return n;
+}
+
 function build(): Map<string, HbEntity> {
   const byId = new Map(seeds.map((s) => [s.id, s]));
   const store = new Map<string, HbEntity>();
   for (const s of seeds) {
     const parent = s.parent ? byId.get(s.parent) : undefined;
     const attachments = [
-      ...Array.from({ length: s.photos ?? 0 }, (_, i) => ({
+      ...Array.from({ length: photoCount(s) }, (_, i) => ({
         id: `${s.id}-photo-${i + 1}`,
         type: "photo",
         title: `${s.name} – Foto ${i + 1}`,
-        mimeType: "image/svg+xml",
+        mimeType: photoFile(s.id, i + 1) ? "image/webp" : "image/svg+xml",
         primary: i === 0,
       })),
       ...(s.manual
@@ -186,6 +207,12 @@ export const mockApi: HomeboxApi = {
     if (a.type !== "photo") {
       const pdf = "%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj 3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 144]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF";
       return { body: new TextEncoder().encode(pdf).buffer as ArrayBuffer, contentType: "application/pdf" };
+    }
+    const n = Number(attachmentId.match(/-photo-(\d+)$/)?.[1] ?? 1);
+    const file = photoFile(entityId, n);
+    if (file) {
+      const buf = readFileSync(file);
+      return { body: buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer, contentType: "image/webp" };
     }
     return {
       body: new TextEncoder().encode(placeholderSvg(a.title)).buffer as ArrayBuffer,
