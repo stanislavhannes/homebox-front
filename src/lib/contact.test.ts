@@ -30,5 +30,6 @@ describe("contactAction", () => {
     expect(a.label).toBe("Per Telegram anfragen");
     expect(a.href).toBe("https://t.me/stani_hannes");
     expect(a.external).toBe(true);
+    expect(a.kind).toBe("telegram");
   });
 });

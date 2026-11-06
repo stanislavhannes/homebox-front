@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ArrowDownIcon, ArrowLeftIcon, FileTextIcon, MapPinIcon, MessageCircleIcon, PaperclipIcon } from "lucide-react";
+import { ArrowDownIcon, ArrowLeftIcon, FileTextIcon, MapPinIcon, PaperclipIcon } from "lucide-react";
+import { ContactIcon } from "@/components/contact-icon";
 import { Markdown } from "@/components/markdown";
 import { AvailabilityBadge } from "@/components/shop/availability-badge";
 import { Gallery } from "@/components/shop/gallery";
@@ -125,7 +126,7 @@ async function ItemContentInner({
                       {...(ask.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                       className={buttonVariants({ size: "lg", className: "h-11 px-4 text-base" })}
                     >
-                      <MessageCircleIcon /> {ask.label}
+                      <ContactIcon kind={ask.kind} /> {ask.label}
                     </a>
                   </div>
                 )}
@@ -236,7 +237,7 @@ async function ItemContentInner({
               {...(ask.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
               className={buttonVariants({ size: "lg", className: "h-12 w-full text-base" })}
             >
-              <MessageCircleIcon /> {ask.label}
+              <ContactIcon kind={ask.kind} /> {ask.label}
             </a>
           </div>
         </>
