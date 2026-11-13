@@ -89,6 +89,19 @@ export async function isPageUnlocked(page: PageConfig): Promise<boolean> {
   return !!value && safeEqual(value, unlockToken(page));
 }
 
+/**
+ * Schlüssel für Direktlinks (/<slug>/zugang?k=…), die eine Page ohne Passworteingabe öffnen.
+ * Hängt wie das Cookie am Passwort-Hash: neues Passwort = alte Links ungültig.
+ */
+export function pageAccessKey(page: PageConfig): string | null {
+  return page.passwordHash ? sign(`link.${page.id}.${page.passwordHash}`) : null;
+}
+
+export function verifyPageAccessKey(page: PageConfig, key: string): boolean {
+  const expected = pageAccessKey(page);
+  return !!expected && safeEqual(key, expected);
+}
+
 export async function unlockPage(page: PageConfig) {
   (await cookies()).set(unlockCookieName(page.id), unlockToken(page), {
     ...cookieBase,

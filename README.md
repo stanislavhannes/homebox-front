@@ -82,7 +82,7 @@ Testmodus, kein echtes Inventar.
   Anleitungen und weiteren Anhängen (pro Page wählbar, welche Arten sichtbar sind).
 - Ein Button pro Kontaktweg: Telegram, Mail (mit dem Namen des Teils vorausgefüllt),
   Telefon, dazu WhatsApp- und Signal-Links aus den weiteren Hinweisen.
-- Optionales Passwort pro Page.
+- Optionales Passwort pro Page. Unter /admin gibt es dazu einen „Zugangslink“, der die Page ohne Passworteingabe öffnet.
 
 **Pro Page**
 - Drei Layouts: Klassischer Shop, Schaufenster mit Header, Kompakte Liste.
