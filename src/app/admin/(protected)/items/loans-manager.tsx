@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState, useId, useMemo, useState, useTransition } from "react";
+import { useActionState, useId, useMemo, useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { EyeOffIcon, PackageIcon, RefreshCwIcon, SearchIcon, TriangleAlertIcon } from "lucide-react";
 import {
+  assignContactAction,
   cleanupExpiredAction,
   lendAction,
   refreshHomeboxAction,
@@ -16,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BulkLendBar } from "@/components/admin/bulk-lend-bar";
 import { datePresets } from "@/lib/date-presets";
-import { cn } from "@/lib/utils";
+import { cn, searchKey } from "@/lib/utils";
 
 export type AdminLoanItem = {
   id: string;
@@ -38,14 +39,14 @@ function formatDate(iso: string) {
   return `${d}.${m}.${y}`;
 }
 
-function normalize(s: string) {
-  return s.toLocaleLowerCase("de").normalize("NFD").replace(/\p{Diacritic}/gu, "");
-}
 
 /** So viele Zeilen auf einmal; danach „Weitere anzeigen“ */
 const ADMIN_PAGE_SIZE = 50;
 
-export function LoansManager({ items, today }: { items: AdminLoanItem[]; today: string }) {
+/** Ansprechpartner zur Auswahl je Zeile, dazu die aktuelle Zuweisung (item id → contact id) */
+export type ContactChoice = { options: { id: number; name: string }[]; byItem: Record<string, number> };
+
+export function LoansManager({ items, today, contacts }: { items: AdminLoanItem[]; today: string; contacts: ContactChoice }) {
   const router = useRouter();
   const [query, setQueryRaw] = useState("");
   const [onlyLent, setOnlyLentRaw] = useState(false);
@@ -64,12 +65,12 @@ export function LoansManager({ items, today }: { items: AdminLoanItem[]; today: 
   const [refreshing, startRefresh] = useTransition();
 
   const filtered = useMemo(() => {
-    const terms = normalize(query).split(/\s+/).filter(Boolean);
+    const terms = searchKey(query).split(/\s+/).filter(Boolean);
     const hasEntries = (it: AdminLoanItem) => it.loans.length > 0 || it.invalid.length > 0;
     return items
       .filter((it) => {
         if (onlyLent && !hasEntries(it)) return false;
-        const hay = normalize(`${it.name} ${it.assetId} ${it.locationPath} ${it.loans.map((l) => l.borrower ?? "").join(" ")}`);
+        const hay = searchKey(`${it.name} ${it.assetId} ${it.locationPath} ${it.loans.map((l) => l.borrower ?? "").join(" ")}`);
         return terms.every((t) => hay.includes(t));
       })
       // Was gerade draußen ist, steht oben
@@ -129,6 +130,7 @@ export function LoansManager({ items, today }: { items: AdminLoanItem[]; today: 
             borrowers={borrowers}
             picked={picked.includes(it.id)}
             onPick={() => togglePick(it.id)}
+            contact={contacts.options.length > 0 ? { options: contacts.options, value: contacts.byItem[it.id] ?? null } : undefined}
           />
         ))}
       </ul>
@@ -165,6 +167,7 @@ export function LoanRow({
   embedded = false,
   picked = false,
   onPick,
+  contact,
 }: {
   item: AdminLoanItem;
   today: string;
@@ -173,6 +176,8 @@ export function LoanRow({
   /** Mehrfachauswahl (nur in der Liste) */
   picked?: boolean;
   onPick?: () => void;
+  /** Auswahl des Ansprechpartners (nur in der Liste, wenn es welche gibt) */
+  contact?: { options: ContactChoice["options"]; value: number | null };
 }) {
   const router = useRouter();
   const listId = useId();
@@ -247,6 +252,7 @@ export function LoanRow({
             {item.locationPath} · {item.quantity} Stück
           </p>
           {!embedded && <AvailabilityBadge status={item.status} label={item.label} />}
+          {contact && <ContactSelect itemId={item.id} itemName={item.name} {...contact} />}
 
           {(item.loans.length > 0 || item.invalid.length > 0) && (
             <ul className="space-y-1 pt-1">
@@ -376,5 +382,57 @@ export function LoanRow({
         </form>
       )}
     </Wrapper>
+  );
+}
+
+/** Ansprechpartner eines Items wählen; speichert sofort */
+function ContactSelect({
+  itemId,
+  itemName,
+  options,
+  value,
+}: {
+  itemId: string;
+  itemName: string;
+  options: ContactChoice["options"];
+  value: number | null;
+}) {
+  const router = useRouter();
+  const id = useId();
+  const [saving, start] = useTransition();
+  // Neue Auswahl sofort zeigen, nicht erst nach dem Neuladen
+  const [current, setCurrent] = useOptimistic(value);
+  return (
+    <div className="flex flex-wrap items-center gap-2 pt-1 text-sm">
+      <label htmlFor={id} className="text-muted-foreground">
+        Ansprechpartner
+      </label>
+      <select
+        id={id}
+        value={current ?? ""}
+        disabled={saving}
+        onChange={(e) => {
+          const next = e.target.value ? Number(e.target.value) : null;
+          start(async () => {
+            setCurrent(next);
+            const res = await assignContactAction(itemId, next);
+            if (res.error) toast.error(res.error);
+            else {
+              const who = options.find((o) => o.id === next)?.name;
+              toast.success(who ? `${itemName}: Ansprechpartner ist jetzt ${who}.` : `${itemName}: wieder Kontakt der Page.`);
+              router.refresh();
+            }
+          });
+        }}
+        className="h-10 rounded-md border bg-background px-2 text-base md:h-8 md:text-sm"
+      >
+        <option value="">Kontakt der Page</option>
+        {options.map((o) => (
+          <option key={o.id} value={o.id}>
+            {o.name}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }

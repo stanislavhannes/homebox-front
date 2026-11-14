@@ -14,9 +14,18 @@ import {
   startAdminSession,
 } from "@/lib/auth";
 import { HOMEBOX_TAG } from "@/lib/catalog";
+import {
+  assignContact,
+  createContact,
+  deleteContact,
+  getContact,
+  parseContactInput,
+  setContactItems,
+  updateContact,
+} from "@/lib/contacts";
 import { sniffContentType } from "@/lib/sniff";
 import { normalizeAccent } from "@/lib/theme";
-import { CONTACT_TITLE_MAX, normalizeMail, normalizePhone, normalizeTelegram } from "@/lib/contact";
+import { CONTACT_TITLE_MAX, parseContactFields } from "@/lib/contact";
 import { shrinkLogo } from "@/lib/logo-image";
 import { updateLoans } from "@/lib/loan-service";
 import { formatLoan, isActive, todayInBerlin, computeAvailability } from "@/lib/loans";
@@ -115,16 +124,13 @@ export async function savePageAction(_prev: FormState, formData: FormData): Prom
   if (existing && existing.id !== id) return { error: `Der Link „/${slug}“ ist schon vergeben.`, field: "allgemein" };
   if (input.locationIds.length === 0) return { error: "Bitte mindestens einen Lagerort auswählen.", field: "lagerorte" };
 
-  const rawTg = String(formData.get("contactTelegram") ?? "").trim();
-  const rawMail = String(formData.get("contactMail") ?? "").trim();
-  const rawPhone = String(formData.get("contactPhone") ?? "").trim();
-  const tg = rawTg ? normalizeTelegram(rawTg) : "";
-  const mail = rawMail ? normalizeMail(rawMail) : "";
-  const phone = rawPhone ? normalizePhone(rawPhone) : "";
-  if (tg === null) return { error: "Telegram-Name: 5–32 Zeichen, Buchstabe zuerst, z. B. @stani_hannes.", field: "kontakt" };
-  if (mail === null) return { error: "Die Mailadresse sieht nicht richtig aus.", field: "kontakt" };
-  if (phone === null) return { error: "Die Telefonnummer sieht nicht richtig aus (6–15 Ziffern).", field: "kontakt" };
-  input.contactFields = { telegram: tg, mail, phone };
+  const parsed = parseContactFields({
+    telegram: String(formData.get("contactTelegram") ?? ""),
+    mail: String(formData.get("contactMail") ?? ""),
+    phone: String(formData.get("contactPhone") ?? ""),
+  });
+  if ("error" in parsed) return { error: parsed.error, field: "kontakt" };
+  input.contactFields = parsed.fields;
 
   const newPassword = String(formData.get("password") ?? "");
   const removePassword = formData.get("removePassword") === "on";
@@ -178,6 +184,42 @@ export async function saveSettingsAction(_prev: FormState, formData: FormData): 
 export async function refreshHomeboxAction() {
   await requireAdmin();
   updateTag(HOMEBOX_TAG);
+}
+
+// ---------- Ansprechpartner ----------
+
+export async function saveContactAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const id = Number(formData.get("id") || 0) || null;
+  const parsed = parseContactInput({
+    name: String(formData.get("name") ?? ""),
+    telegram: String(formData.get("telegram") ?? ""),
+    mail: String(formData.get("mail") ?? ""),
+    phone: String(formData.get("phone") ?? ""),
+    note: String(formData.get("note") ?? ""),
+  });
+  if ("error" in parsed) return { error: parsed.error };
+  if (id && !getContact(id)) return { error: "Diesen Ansprechpartner gibt es nicht mehr." };
+  if (id) updateContact(id, parsed.value);
+  const contactId = id ?? createContact(parsed.value);
+  setContactItems(contactId, formData.getAll("itemIds").map(String).filter(Boolean));
+  redirect("/admin/contacts");
+}
+
+export async function deleteContactAction(formData: FormData) {
+  await requireAdmin();
+  const id = Number(formData.get("id"));
+  if (id) deleteContact(id);
+  redirect("/admin/contacts");
+}
+
+/** contactId null = wieder den Kontakt der Page zeigen */
+export async function assignContactAction(itemId: string, contactId: number | null): Promise<{ error?: string }> {
+  await requireAdmin();
+  if (!itemId) return { error: "Item fehlt." };
+  if (contactId !== null && !getContact(contactId)) return { error: "Diesen Ansprechpartner gibt es nicht mehr." };
+  assignContact(itemId, contactId);
+  return {};
 }
 
 // ---------- Verleih ----------

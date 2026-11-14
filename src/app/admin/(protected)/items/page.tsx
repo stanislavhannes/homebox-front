@@ -3,8 +3,9 @@ import { requireAdminPage } from "@/lib/admin-guard";
 import { getCatalog, getLocationTree } from "@/lib/catalog";
 import { toAdminLoanItem } from "@/lib/admin-loans";
 import { todayInBerlin } from "@/lib/loans";
+import { contactIdsByItem, listContacts } from "@/lib/contacts";
 import { getSettings } from "@/lib/pages";
-import { LoansManager, type AdminLoanItem } from "./loans-manager";
+import { LoansManager, type AdminLoanItem, type ContactChoice } from "./loans-manager";
 
 // Prüft die Admin-Session bei jedem Aufruf, darf daher blockieren.
 export const instant = false;
@@ -15,6 +16,10 @@ export default async function LoansPage() {
   await requireAdminPage();
   const hiddenTag = getSettings().hiddenTag;
 
+  const contacts: ContactChoice = {
+    options: listContacts().map((c) => ({ id: c.id, name: c.name })),
+    byItem: Object.fromEntries(contactIdsByItem()),
+  };
   let items: AdminLoanItem[] = [];
   let error: string | null = null;
   try {
@@ -44,7 +49,7 @@ export default async function LoansPage() {
           Homebox nicht erreichbar: {error}
         </p>
       ) : (
-        <LoansManager items={items} today={todayInBerlin()} />
+        <LoansManager items={items} today={todayInBerlin()} contacts={contacts} />
       )}
     </div>
   );

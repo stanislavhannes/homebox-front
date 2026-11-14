@@ -9,7 +9,7 @@ import { LinkifiedText } from "@/components/linkified-text";
 import type { PublicItem, PublicPage } from "@/lib/public-view";
 import { ContactIcon } from "@/components/contact-icon";
 import { DEFAULT_CONTACT_TITLE, fieldActions, type ContactAction, type ContactFields } from "@/lib/contact";
-import { cn } from "@/lib/utils";
+import { cn, searchKey } from "@/lib/utils";
 import { ItemCard, ItemRow } from "./item-card";
 import { PageLogo } from "./page-logo";
 import { BulkLendBar } from "@/components/admin/bulk-lend-bar";
@@ -56,9 +56,6 @@ function PickBox({ pick, item, className }: { pick: Pick; item: PublicItem; clas
 /** So viele Kacheln auf einmal; teilbar durch 2, 3 und 4 Spalten */
 export const PAGE_SIZE = 24;
 
-function normalize(s: string) {
-  return s.toLocaleLowerCase("de").normalize("NFD").replace(/\p{Diacritic}/gu, "");
-}
 
 /**
  * Suche und Filter. Der Zustand steht im Link (?q=…&ort=…&frei=1), damit man eine gefilterte
@@ -97,7 +94,7 @@ function useFilteredItems(items: PublicItem[], locationIds: Set<string>, tagName
   const index = useMemo(
     () =>
       items.map((it) =>
-        normalize(
+        searchKey(
           [it.name, it.description, it.manufacturer, it.modelNumber, it.locationName, ...it.tags]
             .filter(Boolean)
             .join(" "),
@@ -107,7 +104,7 @@ function useFilteredItems(items: PublicItem[], locationIds: Set<string>, tagName
   );
 
   const filtered = useMemo(() => {
-    const terms = normalize(deferredQuery).split(/\s+/).filter(Boolean);
+    const terms = searchKey(deferredQuery).split(/\s+/).filter(Boolean);
     return items.filter((it, i) => {
       if (locationId && !it.locationChain.includes(locationId)) return false;
       if (onlyAvailable && it.status === "unavailable") return false;
@@ -352,6 +349,7 @@ function Grid({
 export function ContactCard({
   contact,
   fields,
+  personName,
   howto,
   title = DEFAULT_CONTACT_TITLE,
   className,
@@ -360,6 +358,8 @@ export function ContactCard({
   contact: string;
   /** Telegram, Mail, Telefon aus den eigenen Feldern */
   fields?: ContactFields;
+  /** Eigener Ansprechpartner des Items (statt des Page-Kontakts) */
+  personName?: string | null;
   howto?: string;
   /** Überschrift, pro Page einstellbar */
   title?: string;
@@ -379,6 +379,7 @@ export function ContactCard({
           <h2 className="mb-1.5 flex items-center gap-2 text-sm font-semibold">
             <MessageCircleIcon className="size-4" /> {title}
           </h2>
+          {personName && <p className="mb-1.5 text-sm">Ansprechpartner: {personName}</p>}
           {ways.length > 0 && (
             <ul className="mb-1.5 space-y-0.5 text-sm">
               {ways.map((w) => (

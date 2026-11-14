@@ -11,6 +11,9 @@ export const CONTACT_TITLE_SUGGESTIONS = [
   "Was dabei? Schreib uns",
 ] as const;
 export const CONTACT_TITLE_MAX = 60;
+/** Ansprechpartner pro Item: Länge von Name und Hinweis */
+export const CONTACT_NAME_MAX = 80;
+export const CONTACT_NOTE_MAX = 500;
 
 export function contactTitle(value: string | null | undefined) {
   return value?.trim() || DEFAULT_CONTACT_TITLE;
@@ -94,6 +97,17 @@ export function normalizePhone(input: string): string | null {
   const v = input.trim().replace(/\s+/g, " ");
   const digits = v.replace(/\D/g, "");
   return /^[+\d][\d ()/-]*$/.test(v) && digits.length >= 6 && digits.length <= 15 ? v : null;
+}
+
+/** Telegram, Mail und Telefon prüfen und normalisieren. Leere Felder bleiben leer. */
+export function parseContactFields(raw: { telegram: string; mail: string; phone: string }): { fields: ContactFields } | { error: string } {
+  const tg = raw.telegram.trim() ? normalizeTelegram(raw.telegram) : "";
+  const mail = raw.mail.trim() ? normalizeMail(raw.mail) : "";
+  const phone = raw.phone.trim() ? normalizePhone(raw.phone) : "";
+  if (tg === null) return { error: "Telegram-Name: 5–32 Zeichen, Buchstabe zuerst, z. B. @stani_hannes." };
+  if (mail === null) return { error: "Die Mailadresse sieht nicht richtig aus." };
+  if (phone === null) return { error: "Die Telefonnummer sieht nicht richtig aus (6–15 Ziffern)." };
+  return { fields: { telegram: tg, mail, phone } };
 }
 
 /** Kontaktwege aus den eigenen Feldern, Reihenfolge Telegram, Mail, Telefon */

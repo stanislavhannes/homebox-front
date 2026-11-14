@@ -7,7 +7,7 @@ import { env } from "@/lib/env";
 const g = globalThis as unknown as { __appDb?: DatabaseSync; __appDbSchema?: number };
 
 /** Bei neuen Spalten erhöhen, dann migriert auch ein laufender Dev-Server (HMR) sofort. */
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 
 export function db(): DatabaseSync {
   if (g.__appDb) {
@@ -60,4 +60,19 @@ function migrate(database: DatabaseSync) {
   }
   if (!cols.has("contact_title")) database.exec("ALTER TABLE pages ADD COLUMN contact_title TEXT NOT NULL DEFAULT ''");
   if (!cols.has("howto")) database.exec("ALTER TABLE pages ADD COLUMN howto TEXT NOT NULL DEFAULT ''");
+  // Ansprechpartner pro Item (seit 1.2)
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS contacts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      telegram TEXT NOT NULL DEFAULT '',
+      mail TEXT NOT NULL DEFAULT '',
+      phone TEXT NOT NULL DEFAULT '',
+      note TEXT NOT NULL DEFAULT ''
+    );
+    CREATE TABLE IF NOT EXISTS item_contacts (
+      item_id TEXT PRIMARY KEY,
+      contact_id INTEGER NOT NULL REFERENCES contacts(id)
+    );
+  `);
 }

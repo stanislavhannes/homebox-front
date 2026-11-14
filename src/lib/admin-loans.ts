@@ -4,6 +4,11 @@ import type { CatalogItem } from "@/lib/catalog";
 import { availabilityLabel, computeAvailability, formatLoan, isActive, parseLoans } from "@/lib/loans";
 import { imageUrl } from "@/lib/public-view";
 
+/** Lagerort samt Behälter als eine Zeile, z. B. „Keller › Regal 2 › Kiste Kabel“ */
+export function adminLocationPath(it: Pick<CatalogItem, "locationPath" | "containerName">): string {
+  return [...it.locationPath, ...(it.containerName ? [it.containerName] : [])].join(" › ");
+}
+
 /** Item für die Verleih-Verwaltung aufbereiten. Enthält Empfänger: nur an Admins ausliefern. */
 export function toAdminLoanItem(it: CatalogItem, today: string, hiddenTag: string): AdminLoanItem {
   const parsed = parseLoans(it.loanText);
@@ -14,7 +19,7 @@ export function toAdminLoanItem(it: CatalogItem, today: string, hiddenTag: strin
     name: it.name,
     assetId: it.assetId,
     thumbUrl: it.thumbId ? imageUrl("_admin", it.id, it.thumbId) : null,
-    locationPath: [...it.locationPath, ...(it.containerName ? [it.containerName] : [])].join(" › "),
+    locationPath: adminLocationPath(it),
     quantity: it.quantity,
     available: a.available,
     status: a.status,

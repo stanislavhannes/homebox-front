@@ -7,13 +7,14 @@ import { cn } from "@/lib/utils";
 const LINKS = [
   { href: "/admin", label: "Pages", match: (p: string) => p === "/admin" || p.startsWith("/admin/pages") },
   { href: "/admin/items", label: "Items", match: (p: string) => p.startsWith("/admin/items") },
+  { href: "/admin/contacts", label: "Ansprechpartner", match: (p: string) => p.startsWith("/admin/contacts") },
   { href: "/admin/settings", label: "Einstellungen", match: (p: string) => p.startsWith("/admin/settings") },
 ];
 
 export function AdminNav() {
   const pathname = usePathname();
   return (
-    <nav className="flex gap-1">
+    <nav className="flex flex-wrap gap-1">
       {LINKS.map((l) => {
         const active = l.match(pathname);
         return (

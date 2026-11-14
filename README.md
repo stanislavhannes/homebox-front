@@ -83,6 +83,7 @@ Testmodus, kein echtes Inventar.
 - Ein Button pro Kontaktweg: Telegram, Mail (mit dem Namen des Teils vorausgefüllt),
   Telefon, dazu WhatsApp- und Signal-Links aus den weiteren Hinweisen.
 - Optionales Passwort pro Page. Unter /admin gibt es dazu einen „Zugangslink“, der die Page ohne Passworteingabe öffnet.
+- Ansprechpartner: Personen mit eigenem Kontakt anlegen und einzelnen Items zuweisen. Deren Detailseite zeigt dann diesen Kontakt statt den der Page.
 
 **Pro Page**
 - Drei Layouts: Klassischer Shop, Schaufenster mit Header, Kompakte Liste.

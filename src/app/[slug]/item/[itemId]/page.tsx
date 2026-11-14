@@ -14,6 +14,7 @@ import { LoanRow } from "@/app/admin/(protected)/items/loans-manager";
 import { knownBorrowers, toAdminLoanItem } from "@/lib/admin-loans";
 import { isAdmin } from "@/lib/auth";
 import { allContactActions, contactTitle } from "@/lib/contact";
+import { contactForItem, effectiveContact } from "@/lib/contacts";
 import { getSettings } from "@/lib/pages";
 import { PasswordForm } from "@/components/shop/password-form";
 import { ContactCard } from "@/components/shop/shop-view";
@@ -63,8 +64,10 @@ async function ItemContentInner({
 
   const today = todayInBerlin();
   const item = toPublicDetail(page, raw, today);
+  // Eigener Ansprechpartner des Items, sonst der Kontakt der Page
+  const contact = effectiveContact(page, contactForItem(raw.id));
   // Ein Button pro Kontaktweg: erst die eigenen Felder (Telegram, Mail, Telefon), dann weitere Hinweise
-  const actions = allContactActions(page.contactFields, page.contact, item.name);
+  const actions = allContactActions(contact.fields, contact.freeText, item.name);
   const [ask, ...moreAsks] = actions;
   // Nur für eingeloggte Admins: Verleih direkt hier eintragen (Empfänger gelangen nur dann ins HTML)
   const admin = await isAdmin();
@@ -238,7 +241,14 @@ async function ItemContentInner({
             </section>
           )}
 
-          <ContactCard contact={page.contact} fields={page.contactFields} howto={page.howto} title={contactTitle(page.contactTitle)} anchorId={`kontakt-${item.id}`} />
+          <ContactCard
+            contact={contact.freeText}
+            fields={contact.fields}
+            personName={contact.personName}
+            howto={page.howto}
+            title={contactTitle(page.contactTitle)}
+            anchorId={`kontakt-${item.id}`}
+          />
         </div>
       </div>
 
