@@ -1,10 +1,14 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PageConfig } from "./pages";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/env", () => ({ env: () => ({ SESSION_SECRET: "x".repeat(32) }) }));
 
-const { pageAccessKey, verifyPageAccessKey } = await import("./auth");
+// Header der aktuellen Anfrage, pro Test gesetzt
+let requestHeaders = new Headers();
+vi.mock("next/headers", () => ({ headers: async () => requestHeaders, cookies: async () => ({}) }));
+
+const { checkPasswordAttempt, pageAccessKey, verifyPageAccessKey } = await import("./auth");
 
 const page = (passwordHash: string | null, id = 1) => ({ id, passwordHash }) as PageConfig;
 
@@ -32,37 +36,44 @@ describe("Zugangslink", () => {
   });
 });
 
-describe("Rate-Limit", async () => {
-  const { isRateLimited, recordFailedAttempt, clearAttempts } = await import("./auth");
-  it("sperrt eine IP nach 10 Fehlversuchen", () => {
-    for (let i = 0; i < 10; i++) recordFailedAttempt("t1", "1.1.1.1");
-    expect(isRateLimited("t1", "1.1.1.1")).toBe(true);
-    expect(isRateLimited("t1", "2.2.2.2")).toBe(false);
-    clearAttempts("t1", "1.1.1.1");
-    expect(isRateLimited("t1", "1.1.1.1")).toBe(false);
-  });
-  it("sperrt den Bereich, wenn viele IPs raten (gefälschte X-Forwarded-For)", () => {
-    for (let i = 0; i < 50; i++) recordFailedAttempt("t2", `10.0.0.${i}`);
-    expect(isRateLimited("t2", "10.9.9.9")).toBe(true);
-    expect(isRateLimited("t3", "10.9.9.9")).toBe(false);
-  });
-});
+describe("Sperre gegen Passwort-Durchprobieren", () => {
+  afterEach(() => vi.useRealTimers());
 
-describe("Rate-Limit Tagesgrenze und Meldung", async () => {
-  const { isRateLimited, recordFailedAttempt, rateLimitedFor, rateLimitMessage } = await import("./auth");
-  it("lässt pro Bereich höchstens 200 Fehlversuche am Tag zu", () => {
+  /** Ein Versuch von dieser IP (so wie Traefik sie hinten an X-Forwarded-For anhängt) */
+  const attempt = (scope: string, ip: string, correct = false, spoofed = "6.6.6.6") => {
+    requestHeaders = new Headers({ "x-forwarded-for": `${spoofed}, ${ip}` });
+    return checkPasswordAttempt(scope, () => correct, "falsch");
+  };
+
+  it("sperrt eine IP nach 10 Fehlversuchen, andere IPs nicht", async () => {
+    for (let i = 0; i < 10; i++) expect(await attempt("a", "1.1.1.1")).toBe("falsch");
+    expect(await attempt("a", "1.1.1.1", true)).toContain("Zu viele falsche Versuche");
+    expect(await attempt("a", "2.2.2.2", true)).toBeNull();
+  });
+
+  it("nimmt die IP vom Proxy, nicht die vom Client vorangestellte", async () => {
+    for (let i = 0; i < 10; i++) await attempt("b", "1.1.1.1", false, `9.9.9.${i}`);
+    expect(await attempt("b", "1.1.1.1", true, "8.8.8.8")).toContain("Zu viele");
+  });
+
+  it("hebt die Sperre der IP nach richtigem Passwort auf", async () => {
+    for (let i = 0; i < 9; i++) await attempt("c", "1.1.1.1");
+    expect(await attempt("c", "1.1.1.1", true)).toBeNull();
+    for (let i = 0; i < 9; i++) expect(await attempt("c", "1.1.1.1")).toBe("falsch");
+  });
+
+  it("sperrt den Bereich, wenn viele IPs raten", async () => {
+    for (let i = 0; i < 50; i++) await attempt("d", `10.0.0.${i}`);
+    expect(await attempt("d", "10.9.9.9", true)).toMatch(/in 10 Minuten/);
+    expect(await attempt("e", "10.9.9.9", true)).toBeNull();
+  });
+
+  it("lässt pro Bereich höchstens 200 Fehlversuche am Tag zu", async () => {
     vi.useFakeTimers();
     for (let round = 0; round < 4; round++) {
-      for (let i = 0; i < 50; i++) recordFailedAttempt("t4", `10.1.${round}.${i}`);
+      for (let i = 0; i < 50; i++) await attempt("f", `10.1.${round}.${i}`);
       vi.advanceTimersByTime(11 * 60_000); // 10-Minuten-Fenster ist vorbei
     }
-    expect(isRateLimited("t4", "10.9.9.9")).toBe(true);
-    expect(rateLimitedFor("t4", "10.9.9.9")).toBeGreaterThan(20 * 60 * 60_000);
-    vi.useRealTimers();
-  });
-  it("nennt die Wartezeit", () => {
-    expect(rateLimitMessage(7 * 60_000)).toContain("7 Minuten");
-    expect(rateLimitMessage(30_000)).toContain("einer Minute");
-    expect(rateLimitMessage(23 * 60 * 60_000)).toContain("23 Stunden");
+    expect(await attempt("f", "10.9.9.9", true)).toMatch(/in 24 Stunden/);
   });
 });

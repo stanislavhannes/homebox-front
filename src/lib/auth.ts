@@ -117,14 +117,14 @@ export async function unlockPage(page: PageConfig) {
   });
 }
 
-// ---------- einfaches Rate-Limit (im Speicher, reicht für eine Instanz) ----------
+// ---------- Sperre gegen Passwort-Durchprobieren (im Speicher, reicht für eine Instanz) ----------
 
 /**
  * IP des Besuchers. Ein Reverse Proxy (Traefik, Caddy, nginx) hängt die echte Adresse hinten an
  * X-Forwarded-For an; alles davor kann der Client selbst mitschicken. Darum der letzte Eintrag.
- * Ohne Proxy ist der Header komplett frei wählbar, deshalb gibt es zusätzlich ein globales Limit.
+ * Ohne Proxy ist der Header komplett frei wählbar, deshalb gibt es zusätzlich Grenzen pro Bereich.
  */
-export async function clientIp(): Promise<string> {
+async function clientIp(): Promise<string> {
   const h = await headers();
   const forwarded = h.get("x-forwarded-for")?.split(",").map((s) => s.trim()).filter(Boolean);
   return forwarded?.at(-1) || h.get("x-real-ip")?.trim() || "local";
@@ -138,17 +138,17 @@ type Limit = { max: number; windowMs: number };
  *  - pro IP: 10 Fehlversuche in 10 Minuten
  *  - pro Bereich (Admin-Login bzw. eine Page) über alle IPs: 50 in 10 Minuten
  *  - pro Bereich am Tag: 200 Fehlversuche in 24 Stunden
- * Die globalen Stufen greifen auch bei gefälschten IPs und verteiltem Raten.
+ * Die Stufen pro Bereich greifen auch bei gefälschten IPs und verteiltem Raten.
  */
 const PER_IP: Limit = { max: 10, windowMs: 10 * 60_000 };
-const GLOBAL: Limit = { max: 50, windowMs: 10 * 60_000 };
-const DAILY: Limit = { max: 200, windowMs: 24 * 60 * 60_000 };
+const PER_SCOPE: Limit = { max: 50, windowMs: 10 * 60_000 };
+const PER_SCOPE_DAILY: Limit = { max: 200, windowMs: 24 * 60 * 60_000 };
 /** Obergrenze für gemerkte IPs, damit der Speicher nicht beliebig wächst */
 const MAX_TRACKED = 5_000;
 
 const perIp = new Map<string, Bucket>();
-const global = new Map<string, Bucket>();
-const daily = new Map<string, Bucket>();
+const perScope = new Map<string, Bucket>();
+const perScopeDaily = new Map<string, Bucket>();
 
 /** Restliche Sperrzeit in ms, 0 = frei */
 function lockedFor(map: Map<string, Bucket>, key: string, limit: Limit) {
@@ -177,34 +177,43 @@ function prune() {
   }
 }
 
-/** Wie lange (ms) noch gesperrt ist; 0 = Versuch erlaubt. Nur FEHLversuche zählen. */
-export function rateLimitedFor(scope: string, ip: string): number {
-  return Math.max(
-    lockedFor(perIp, `${scope}:${ip}`, PER_IP),
-    lockedFor(global, scope, GLOBAL),
-    lockedFor(daily, scope, DAILY),
-  );
+function lockMessage(ms: number): string {
+  return `Zu viele falsche Versuche. Bitte in ${waitText(ms)} noch mal probieren.`;
 }
 
-export function isRateLimited(scope: string, ip: string): boolean {
-  return rateLimitedFor(scope, ip) > 0;
-}
-
-/** Fehlermeldung für eine Sperre, z. B. „… in 7 Minuten …“ */
-export function rateLimitMessage(ms: number): string {
+/** „einer Minute“, „7 Minuten“, ab 90 Minuten in Stunden */
+function waitText(ms: number): string {
   const minutes = Math.ceil(ms / 60_000);
-  const wait = minutes >= 90 ? `${Math.ceil(minutes / 60)} Stunden` : minutes === 1 ? "einer Minute" : `${minutes} Minuten`;
-  return `Zu viele falsche Versuche. Bitte in ${wait} noch mal probieren.`;
+  if (minutes >= 90) return `${Math.ceil(minutes / 60)} Stunden`;
+  if (minutes === 1) return "einer Minute";
+  return `${minutes} Minuten`;
 }
 
-export function recordFailedAttempt(scope: string, ip: string) {
-  bump(perIp, `${scope}:${ip}`, PER_IP);
-  bump(global, scope, GLOBAL);
-  bump(daily, scope, DAILY);
-  prune();
-}
-
-/** Nach erfolgreicher Anmeldung: nur die Sperre dieser IP aufheben, die globalen Zähler bleiben */
-export function clearAttempts(scope: string, ip: string) {
-  perIp.delete(`${scope}:${ip}`);
+/**
+ * Passwortprüfung mit Sperre gegen Durchprobieren. Nur Fehlversuche zählen; nach Erfolg wird
+ * nur die Sperre dieser IP aufgehoben, die Zähler pro Bereich bleiben.
+ * @returns null = Passwort richtig, sonst die Fehlermeldung für das Formular
+ */
+export async function checkPasswordAttempt(
+  scope: string,
+  verify: () => boolean,
+  wrongMessage: string,
+): Promise<string | null> {
+  const ip = await clientIp();
+  const ipKey = `${scope}:${ip}`;
+  const locked = Math.max(
+    lockedFor(perIp, ipKey, PER_IP),
+    lockedFor(perScope, scope, PER_SCOPE),
+    lockedFor(perScopeDaily, scope, PER_SCOPE_DAILY),
+  );
+  if (locked) return lockMessage(locked);
+  if (!verify()) {
+    bump(perIp, ipKey, PER_IP);
+    bump(perScope, scope, PER_SCOPE);
+    bump(perScopeDaily, scope, PER_SCOPE_DAILY);
+    prune();
+    return wrongMessage;
+  }
+  perIp.delete(ipKey);
+  return null;
 }

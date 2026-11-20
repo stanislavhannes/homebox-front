@@ -3,12 +3,8 @@
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import {
-  clearAttempts,
-  rateLimitedFor,
-  rateLimitMessage,
-  recordFailedAttempt,
   checkAdminPassword,
-  clientIp,
+  checkPasswordAttempt,
   endAdminSession,
   hashPassword,
   isAdmin,
@@ -58,15 +54,9 @@ async function requireAdmin() {
 export type FormState = { error?: string; ok?: string; field?: "allgemein" | "lagerorte" | "logo" | "passwort" | "kontakt" };
 
 export async function loginAction(_prev: FormState, formData: FormData): Promise<FormState> {
-  const ip = await clientIp();
-  const scope = "admin";
-  const locked = rateLimitedFor(scope, ip);
-  if (locked) return { error: rateLimitMessage(locked) };
-  if (!checkAdminPassword(String(formData.get("password") ?? ""))) {
-    recordFailedAttempt(scope, ip);
-    return { error: "Falsches Passwort." };
-  }
-  clearAttempts(scope, ip);
+  const password = String(formData.get("password") ?? "");
+  const error = await checkPasswordAttempt("admin", () => checkAdminPassword(password), "Falsches Passwort.");
+  if (error) return { error };
   await startAdminSession();
   redirect("/admin");
 }
