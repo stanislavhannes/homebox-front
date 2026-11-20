@@ -1,13 +1,14 @@
 "use server";
 
 import { updateTag } from "next/cache";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   clearAttempts,
-  isRateLimited,
+  rateLimitedFor,
+  rateLimitMessage,
   recordFailedAttempt,
   checkAdminPassword,
+  clientIp,
   endAdminSession,
   hashPassword,
   isAdmin,
@@ -57,16 +58,15 @@ async function requireAdmin() {
 export type FormState = { error?: string; ok?: string; field?: "allgemein" | "lagerorte" | "logo" | "passwort" | "kontakt" };
 
 export async function loginAction(_prev: FormState, formData: FormData): Promise<FormState> {
-  const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
-  const key = `admin:${ip}`;
-  if (isRateLimited(key)) {
-    return { error: "Zu viele Versuche. Bitte in ein paar Minuten noch mal probieren." };
-  }
+  const ip = await clientIp();
+  const scope = "admin";
+  const locked = rateLimitedFor(scope, ip);
+  if (locked) return { error: rateLimitMessage(locked) };
   if (!checkAdminPassword(String(formData.get("password") ?? ""))) {
-    recordFailedAttempt(key);
+    recordFailedAttempt(scope, ip);
     return { error: "Falsches Passwort." };
   }
-  clearAttempts(key);
+  clearAttempts(scope, ip);
   await startAdminSession();
   redirect("/admin");
 }
@@ -137,7 +137,7 @@ export async function savePageAction(_prev: FormState, formData: FormData): Prom
   let passwordHash: string | null | undefined = undefined;
   if (removePassword) passwordHash = null;
   else if (newPassword) {
-    if (newPassword.length < 4) return { error: "Das Passwort sollte mindestens 4 Zeichen haben.", field: "passwort" };
+    if (newPassword.length < 8) return { error: "Das Passwort braucht mindestens 8 Zeichen.", field: "passwort" };
     passwordHash = hashPassword(newPassword);
   }
 

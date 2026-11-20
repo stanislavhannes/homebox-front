@@ -444,13 +444,14 @@ export function PageForm({ page, locations, fieldOptions, defaultFields, homebox
           title="Passwort"
           id={fid("abschnitt-passwort")}
           error={err.field === "passwort" ? err.error : null}
-          hint={page?.hasPassword ? "Diese Page ist geschützt. Ein neues Passwort sperrt alle bisherigen Besucher aus." : "Optional. Ohne Passwort kann jeder mit dem Link die Page sehen."}
+          hint={page?.hasPassword ? "Diese Page ist geschützt. Ein neues Passwort (mind. 8 Zeichen) sperrt alle bisherigen Besucher aus." : "Optional, mind. 8 Zeichen. Ohne Passwort kann jeder mit dem Link die Page sehen."}
         >
           <Input
             name="password"
             type="password"
             aria-label={page?.hasPassword ? "Neues Passwort" : "Passwort"}
             autoComplete="new-password"
+            minLength={8}
             placeholder={page?.hasPassword ? "Neues Passwort (leer = unverändert)" : "Passwort (optional)"}
             disabled={removePassword}
           />

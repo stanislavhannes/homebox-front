@@ -1,7 +1,6 @@
 "use server";
 
-import { headers } from "next/headers";
-import { clearAttempts, isRateLimited, recordFailedAttempt, unlockPage, verifyPassword } from "@/lib/auth";
+import { clearAttempts, clientIp, rateLimitedFor, rateLimitMessage, recordFailedAttempt, unlockPage, verifyPassword } from "@/lib/auth";
 import { getPageBySlug } from "@/lib/pages";
 
 export type UnlockState = { error?: string };
@@ -12,16 +11,15 @@ export async function unlockAction(_prev: UnlockState, formData: FormData): Prom
   const page = getPageBySlug(slug);
   if (!page || !page.published || !page.passwordHash) return { error: "Diese Seite gibt es nicht." };
 
-  const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
-  const key = `unlock:${page.id}:${ip}`;
-  if (isRateLimited(key)) {
-    return { error: "Zu viele Versuche. Bitte in ein paar Minuten noch mal probieren." };
-  }
+  const ip = await clientIp();
+  const scope = `unlock:${page.id}`;
+  const locked = rateLimitedFor(scope, ip);
+  if (locked) return { error: rateLimitMessage(locked) };
   if (!verifyPassword(password, page.passwordHash)) {
-    recordFailedAttempt(key);
+    recordFailedAttempt(scope, ip);
     return { error: "Das Passwort stimmt leider nicht." };
   }
-  clearAttempts(key);
+  clearAttempts(scope, ip);
   await unlockPage(page);
   return {};
 }
